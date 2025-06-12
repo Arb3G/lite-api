@@ -1,4 +1,3 @@
-
 const express = require('express');
 const app = express();
 const buycjsRoute = require('./routes/buycjs');
