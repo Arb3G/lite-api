@@ -1,1 +1,13 @@
+{
+  "name": "cjs-api",
+  "version": "1.0.0",
+  "description": "Node.js API for CJS purchase flow",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
 
