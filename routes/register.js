@@ -2,7 +2,32 @@ const express = require('express');
 const router = express.Router();
 const db = require('../services/db');
 
-// POST /register
+/*
+Expected Client Interaction Flow:
+
+1. Initial request:
+   POST /register with empty body {}
+   → Response: Introduction + "Are you registered? (yes/no)", step: "askRegistered"
+
+2. User says "no":
+   POST /register with { step: "askRegistered", response: "no" }
+   → Response: "Please provide new userId and publicKey", step: "getRegistrationInfo"
+
+3. User provides registration info:
+   POST /register with { step: "getRegistrationInfo", userId: "user123", publicKey: "GABC..." }
+   → Response: "Thanks user123, you've been registered.", canProceedToBuy: true
+
+4. If user says "yes":
+   POST /register with { step: "askRegistered", response: "yes" }
+   → Response: "Please provide your userId", step: "confirmUserId"
+
+5. User submits userId:
+   POST /register with { step: "confirmUserId", userId: "user123" }
+   → If found: success = true, canProceedToBuy = true
+   → If not found: prompts to register (step: getRegistrationInfo)
+
+*/
+
 router.post('/', async (req, res) => {
   const { step, userId, publicKey, response } = req.body;
 
