@@ -1,16 +1,26 @@
+// server.js
 const express = require('express');
-const app = express();
-
+const cors = require('cors');
 const registerRoute = require('./routes/register');
-const buycjsRoute = require('./routes/buycjs');
+// const buyCJSRoute = require('./routes/buycjs'); // Optional if you implement this
 
-app.use(express.json());
-
-app.use('/register', registerRoute);   // Handles user verification + optional registration
-app.use('/buycjs', buycjsRoute);       // Handles actual purchase (after validation)
-
+const app = express();
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`CJS API live on port ${PORT}`);
+
+// Middleware
+app.use(cors()); // Enable CORS if accessing from browser or external bots
+app.use(express.json()); // For parsing JSON request bodies
+
+// Routes
+app.use('/register', registerRoute);
+// app.use('/buycjs', buyCJSRoute); // Uncomment if you implement a buy endpoint
+
+// Root route
+app.get('/', (req, res) => {
+  res.send('🟢 CJS Pay Server is running.');
 });
 
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 CJS Pay server started on http://localhost:${PORT}`);
+});
