@@ -1,16 +1,19 @@
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+// db.js (with Supabase)
+const { createClient } = require('@supabase/supabase-js');
 
-
-const db = admin.firestore();
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 async function addUser(userId, publicKey) {
-  await db.collection('users').doc(userId).set({ publicKey });
+  await supabase.from('users').insert({ id: userId, public_key: publicKey });
 }
 
 async function getUser(userId) {
-  const doc = await db.collection('users').doc(userId).get();
-  return doc.exists ? doc.data() : null;
+  const { data } = await supabase.from('users').select().eq('id', userId).single();
+  return data;
 }
 
-module.exports = { addUser, getUser };
+async function recordPurchase(userId, amount) {
+  await supabase.from('purchases').insert({ user_id: userId, amount });
+}
+
+module.exports = { addUser, getUser, recordPurchase };
