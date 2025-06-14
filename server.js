@@ -1,6 +1,6 @@
 // server.js
 const express = require('express');
-/ Optional: Supabase usage in server.js
+// Optional: Supabase usage in server.js
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
