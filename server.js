@@ -1,5 +1,13 @@
 // server.js
 const express = require('express');
+/ Optional: Supabase usage in server.js
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
 const cors = require('cors');
 const registerRoute = require('./routes/register');
 // const buyCJSRoute = require('./routes/buycjs'); // Optional if you implement this
