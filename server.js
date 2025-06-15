@@ -30,5 +30,6 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 CJS Pay server started on http://localhost:${PORT}`);
+  const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+  console.log(`🚀 CJS Pay server started on ${baseUrl}`);
 });
