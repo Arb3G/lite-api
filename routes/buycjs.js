@@ -1,7 +1,7 @@
 // buycjs.js
 
 const registration = require('./registration');
-const db = require('./services/db');
+const db = require('../services/db');
 const { buyCJS } = require('./buycjs');
 const readline = require('readline');
 
