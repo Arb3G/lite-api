@@ -2,7 +2,7 @@
 
 const registration = require('./registration');
 const db = require('../services/db');
-const { buyCJS } = require('./buycjs');
+// const { buyCJS } = require('./buycjs');
 const readline = require('readline');
 
 // Helper: Prompt user input from shell
@@ -15,6 +15,12 @@ function promptInput(question) {
     rl.close();
     resolve(answer.trim());
   }));
+}
+
+async function buyCJS({ user, amount }) {
+  // placeholder: replace with real Stellar purchase logic
+  console.log(`Simulating purchase of ${amount} CJS for user ${user.username}`);
+  return { success: true, txId: 'TX1234567890' };
 }
 
 // Ask for how much CJS to purchase
