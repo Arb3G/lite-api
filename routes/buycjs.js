@@ -47,17 +47,45 @@ async function processPurchase(userId, amount) {
 }
 
 async function promptBuyCJS(args) {
-  if (!args || args.length === 0) {
-    console.log('\n💳 Welcome to CJS Pay!');
-    console.log('CJS Pay allows you to make secure purchases linked to your Stellar public key.');
-    console.log('To begin, we need to verify that you are registered.\n');
+  if (!args || args.length === 0) {
+    console.log('\n💳 Welcome to CJS Pay!');
+    console.log('CJS Pay allows you to make secure purchases linked to your Stellar public key.');
+    console.log('To begin, we need to verify that you are registered.\n');
 
-    const registeredUser = await registration.promptRegistration();
+    let registeredUser = await registration.promptRegistration();
 
-    if (!registeredUser) {
-      console.log('Registration failed or cancelled. Exiting.');
-      process.exit(1);
-    }
+    // ⛔️ If not registered, keep prompting until registration succeeds or user cancels explicitly
+    while (!registeredUser) {
+      const tryAgain = await promptInput('You are not registered. Would you like to try again? (yes/no): ');
+      if (tryAgain.toLowerCase() !== 'yes') {
+        console.log('Registration cancelled. Exiting.');
+        process.exit(0);
+      }
+      registeredUser = await registration.promptRegistration();
+    }
+
+    console.log('\n👍 Registration complete! Let\'s proceed with your purchase.\n');
+
+    // Continue with purchase
+    const amount = await promptPurchaseAmount();
+
+    const confirmed = await confirmPurchase(amount);
+
+    if (!confirmed) {
+      console.log('❌ Purchase cancelled.');
+      process.exit(0);
+    }
+
+    const result = await buyCJS({ user: registeredUser, amount });
+
+    if (result.success) {
+      console.log(`✅ Purchase successful! Transaction ID: ${result.txId}`);
+    } else {
+      console.error(`🚫 Purchase failed: ${result.error}`);
+    }
+  }
+}
+
 
     console.log('\n👍 Registration complete! Let\'s proceed with your purchase.\n');
 
