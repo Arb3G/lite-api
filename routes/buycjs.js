@@ -1,122 +1,74 @@
 // buycjs.js
+
 const registration = require('./registration');
-const db = require('../services/db');
+const { buyCJS } = require('../services/buycjs');
 const readline = require('readline');
 
-/**
- * CLI interface for purchasing CJS Pay credits.
- * - First ensures the user is registered via API flow.
- * - Then prompts for amount and processes purchase.
- */
-
-function askQuestion(query) {
+// Helper: Prompt user input from shell
+function promptInput(question) {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout,
+    output: process.stdout
   });
-  return new Promise(resolve => {
-    rl.question(query, answer => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
+  return new Promise(resolve => rl.question(question, answer => {
+    rl.close();
+    resolve(answer.trim());
+  }));
 }
 
-async function promptUserForBuyArgs() {
-  const userId = await askQuestion('Enter your User ID: ');
-  const amountStr = await askQuestion('Enter amount to buy: ');
-  const amount = parseFloat(amountStr);
-
-  if (!userId || isNaN(amount) || amount <= 0) {
-    console.log('Invalid input for purchase.');
-    return null;
+// Ask for how much CJS to purchase
+async function promptPurchaseAmount() {
+  const input = await promptInput('Enter amount of CJS to purchase: ');
+  const amount = parseFloat(input);
+  if (isNaN(amount) || amount <= 0) {
+    console.log('❗ Invalid amount. Please try again.');
+    return await promptPurchaseAmount();
   }
-  return { userId, amount };
+  return amount;
 }
 
-async function processPurchase(userId, amount) {
-  const user = await db.getUserById(userId);
-  if (!user) {
-    throw new Error('User not found in DB. Please register via CLI or API.');
-  }
-
-  const purchase = await db.recordPurchase(userId, amount);
-  console.log('\n✅ Purchase successful!');
-  console.log('Details:', purchase);
-  return purchase;
+// Confirm user wants to proceed with purchase
+async function confirmPurchase(amount) {
+  const confirm = await promptInput(`Proceed with purchase of ${amount} CJS? (yes/no): `);
+  return confirm.toLowerCase() === 'yes';
 }
 
+// Main CLI wrapper
 async function promptBuyCJS(args) {
-  if (!args || args.length === 0) {
-    console.log('\n💳 Welcome to CJS Pay!');
-    console.log('CJS Pay allows you to make secure purchases linked to your Stellar public key.');
-    console.log('To begin, we need to verify that you are registered.\n');
+  if (!args || args.length === 0) {
+    console.log('\n💳 Welcome to CJS Pay!');
+    console.log('CJS Pay allows you to make secure purchases linked to your Stellar public key.');
+    console.log('To begin, we need to verify that you are registered.\n');
 
-    let registeredUser = await registration.promptRegistration();
+    let registeredUser = await registration.promptRegistration();
 
-    // ⛔️ If not registered, keep prompting until registration succeeds or user cancels explicitly
-    while (!registeredUser) {
-      const tryAgain = await promptInput('You are not registered. Would you like to try again? (yes/no): ');
-      if (tryAgain.toLowerCase() !== 'yes') {
-        console.log('Registration cancelled. Exiting.');
-        process.exit(0);
-      }
-      registeredUser = await registration.promptRegistration();
-    }
-
-    console.log('\n👍 Registration complete! Let\'s proceed with your purchase.\n');
-
-    // Continue with purchase
-    const amount = await promptPurchaseAmount();
-
-    const confirmed = await confirmPurchase(amount);
-
-    if (!confirmed) {
-      console.log('❌ Purchase cancelled.');
-      process.exit(0);
-    }
-
-    const result = await buyCJS({ user: registeredUser, amount });
-
-    if (result.success) {
-      console.log(`✅ Purchase successful! Transaction ID: ${result.txId}`);
-    } else {
-      console.error(`🚫 Purchase failed: ${result.error}`);
-    }
-  }
-}
-
+    while (!registeredUser) {
+      const tryAgain = await promptInput('You are not registered. Would you like to try again? (yes/no): ');
+      if (tryAgain.toLowerCase() !== 'yes') {
+        console.log('Registration cancelled. Exiting.');
+        process.exit(0);
+      }
+      registeredUser = await registration.promptRegistration();
+    }
 
     console.log('\n👍 Registration complete! Let\'s proceed with your purchase.\n');
 
-    const buyArgs = await promptUserForBuyArgs();
-    if (!buyArgs) {
-      console.log('Invalid buy arguments. Exiting.');
-      process.exit(1);
+    const amount = await promptPurchaseAmount();
+    const confirmed = await confirmPurchase(amount);
+
+    if (!confirmed) {
+      console.log('❌ Purchase cancelled.');
+      process.exit(0);
     }
 
-    return await processPurchase(buyArgs.userId, buyArgs.amount);
-  } else {
-    const userId = args[0];
-    const amount = parseFloat(args[1]);
-    if (!userId || isNaN(amount) || amount <= 0) {
-      throw new Error('Invalid CLI arguments for buycjs.');
+    const result = await buyCJS({ user: registeredUser, amount });
+
+    if (result.success) {
+      console.log(`✅ Purchase successful! Transaction ID: ${result.txId}`);
+    } else {
+      console.error(`🚫 Purchase failed: ${result.error}`);
     }
-    return await processPurchase(userId, amount);
   }
 }
 
-async function main() {
-  try {
-    const args = process.argv.slice(2);
-    await promptBuyCJS(args);
-  } catch (err) {
-    console.error('❌ Error:', err.message);
-  }
-}
-
-if (require.main === module) {
-  main();
-}
-
-module.exports = { promptBuyCJS, main };
+module.exports = { promptBuyCJS };
