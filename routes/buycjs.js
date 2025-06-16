@@ -1,7 +1,7 @@
 // buycjs.js
 
 const registration = require('./registration');
-const { buyCJS } = require('../routes/buycjs');
+const { buyCJS } = require('../services/buycjs');
 const readline = require('readline');
 
 // Helper: Prompt user input from shell
