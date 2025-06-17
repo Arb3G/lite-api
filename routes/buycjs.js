@@ -2,7 +2,7 @@
 
 const registration = require('./registration');
 const readline = require('readline');
-const { checkIfRegistered } = require('./registration');
+const { checkIfRegistered, promptRegistration } = require('./registration');
 
 // Helper: Prompt user input from shell
 function promptInput(question) {
@@ -43,8 +43,19 @@ async function promptBuyCJS(args) {
     console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
     console.log('To begin, we need to verify that you are registered.\n');
 
-    // This handles: check, confirm, or register user
-    const registeredUser = await registration.promptRegistration();
+    const userId = await registration.askQuestion('Please enter your user ID: ');
+
+    const isRegistered = await registration.checkIfRegistered(userId);
+
+    let registeredUser;
+
+    if (isRegistered) {
+      console.log(`\n✅ Welcome back, ${userId}! You're already registered.`);
+      registeredUser = { userId }; // Assume Stellar key is on file
+    } else {
+      console.log('\n🛑 You are not registered. Let\'s register you now.\n');
+      registeredUser = await registration.promptRegistration(userId); // pass userId
+    }
 
     if (!registeredUser || !registeredUser.userId) {
       console.log('❌ Unable to verify or register user. Exiting.');
