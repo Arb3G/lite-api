@@ -5,16 +5,18 @@ const readline = require('readline');
 const { checkIfRegistered, promptRegistration } = require('./registration');
 
 // Helper: Prompt user input from shell
-function promptInput(question) {
+function askQuestion(query) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise(resolve => rl.question(question, answer => {
+
+  return new Promise(resolve => rl.question(query, answer => {
     rl.close();
-    resolve(answer.trim());
+    resolve(answer.trim()); // <-- ensure no leading/trailing space
   }));
 }
+
 
 async function buyCJS({ user, amount }) {
   // Placeholder: replace with real Stellar purchase logic
