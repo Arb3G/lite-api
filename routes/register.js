@@ -21,19 +21,20 @@ router.post('/', async (req, res) => {
 
   // Step: Confirm registration
   if (step === 'confirm') {
-    const user = await getUser(userId);
-    console.log('🔍 Checking user:', user);
-
-    if (user) {
-      return res.status(200).json({
-        message: "Great! You're ready to make a purchase. Submit your userId and amount to /buycjs."
-      });
-    } else {
-      return res.status(200).json({
-        message: "No user found. Please register by sending your userId and Stellar publicKey to this endpoint with step: 'register'."
-      });
-    }
+  const user = await getUser(userId);
+  if (user) {
+    return res.status(200).json({
+      registered: true,
+      message: "Great! You're ready to make a purchase. Submit your userId and amount to /buycjs."
+    });
+  } else {
+    return res.status(200).json({
+      registered: false,
+      message: "User not found. Please register."
+    });
   }
+}
+
 
   // Step: Register user
   if (step === 'register') {
