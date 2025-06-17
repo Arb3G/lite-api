@@ -1,31 +1,14 @@
 // buycjs.js
 
-const registration = require('./registration');
-const readline = require('readline');
-const { checkIfRegistered, promptRegistration } = require('./registration');
-
-// Helper: Prompt user input from shell
-function askQuestion(query) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  return new Promise(resolve => rl.question(query, answer => {
-    rl.close();
-    resolve(answer.trim()); // <-- ensure no leading/trailing space
-  }));
-}
-
+const { askQuestion, checkIfRegistered, promptRegistration } = require('./registration');
 
 async function buyCJS({ user, amount }) {
-  // Placeholder: replace with real Stellar purchase logic
   console.log(`Simulating purchase of ${amount} CJS for user ${user.userId}`);
   return { success: true, txId: 'TX1234567890' };
 }
 
 async function promptPurchaseAmount() {
-  const input = await promptInput('Enter amount of CJS to purchase: ');
+  const input = await askQuestion('Enter amount of CJS to purchase: ');
   const amount = parseFloat(input);
   if (isNaN(amount) || amount <= 0) {
     console.log('❗ Invalid amount. Please try again.');
@@ -35,7 +18,7 @@ async function promptPurchaseAmount() {
 }
 
 async function confirmPurchase(amount) {
-  const confirm = await promptInput(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
+  const confirm = await askQuestion(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
   return confirm.toLowerCase() === 'yes';
 }
 
@@ -45,18 +28,18 @@ async function promptBuyCJS(args) {
     console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
     console.log('To begin, we need to verify that you are registered.\n');
 
-    const userId = await registration.askQuestion('Please enter your user ID: ');
+    const userId = await askQuestion('Please enter your user ID: ');
 
-    const isRegistered = await registration.checkIfRegistered(userId);
+    const isRegistered = await checkIfRegistered(userId);
 
     let registeredUser;
 
     if (isRegistered) {
       console.log(`\n✅ Welcome back, ${userId}! You're already registered.`);
-      registeredUser = { userId }; // Assume Stellar key is on file
+      registeredUser = { userId };
     } else {
       console.log('\n🛑 You are not registered. Let\'s register you now.\n');
-      registeredUser = await registration.promptRegistration(userId); // pass userId
+      registeredUser = await promptRegistration(userId);
     }
 
     if (!registeredUser || !registeredUser.userId) {
@@ -86,7 +69,6 @@ async function promptBuyCJS(args) {
 
 module.exports = { promptBuyCJS };
 
-// 🔁 Allow standalone CLI usage
 if (require.main === module) {
   promptBuyCJS(process.argv.slice(2));
 }
