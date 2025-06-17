@@ -3,11 +3,6 @@ const express = require('express');
 const router = express.Router();
 const { getUser, addUser } = require('../services/db');
 
-// Basic Stellar public key format validation
-function isValidStellarKey(key) {
-  return /^G[A-Z2-7]{55}$/.test(key);
-}
-
 router.post('/', async (req, res) => {
   const { userId, step, answer, publicKey } = req.body;
 
@@ -15,7 +10,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: "userId is required." });
   }
 
-  // Step 0 – Initial prompt
+  // Initial prompt
   if (!step) {
     return res.status(200).json({
       message: "Welcome to CJS Pay!",
@@ -24,51 +19,43 @@ router.post('/', async (req, res) => {
     });
   }
 
-  // Step 1 – Confirm existing registration
+  // Step: Confirm registration
   if (step === 'confirm') {
-    if (answer?.toLowerCase() === 'yes') {
+    const user = await getUser(userId);
+    console.log('🔍 Checking user:', user);
+
+    if (user) {
       return res.status(200).json({
         message: "Great! You're ready to make a purchase. Submit your userId and amount to /buycjs."
       });
     } else {
       return res.status(200).json({
-        message: "No problem. Please register by sending your userId and Stellar publicKey to this endpoint with step: 'register'."
+        message: "No user found. Please register by sending your userId and Stellar publicKey to this endpoint with step: 'register'."
       });
     }
   }
 
-  // Step 2 – Register new user
+  // Step: Register user
   if (step === 'register') {
     if (!publicKey) {
       return res.status(400).json({ error: "publicKey is required." });
     }
 
-    if (!isValidStellarKey(publicKey)) {
-      return res.status(400).json({ error: "Invalid Stellar public key format." });
-    }
-
     try {
-      const existingUser = await getUser(userId);
-      if (existingUser) {
-        return res.status(200).json({
-          message: "You are already registered.",
-          user: existingUser
-        });
-      }
-
       await addUser(userId, publicKey);
-      console.log(`📥 Registered new user: ${userId}`);
+      console.log('✅ Registered new user:', { userId, publicKey });
+
       return res.status(200).json({
         message: "Registration complete.",
         user: { userId, publicKey }
       });
     } catch (error) {
-      console.error('❌ Registration failed:', error.message);
-      return res.status(500).json({ error: "Registration failed. Please try again later." });
+      console.error('❌ Registration error:', error);
+      return res.status(500).json({ error: "Failed to register user." });
     }
   }
 
-  // Invalid step fallback
+  // Unknown step
   return res.status(400).json({ error: "Invalid step." });
 });
 
