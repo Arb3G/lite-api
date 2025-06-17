@@ -2,6 +2,7 @@
 
 const registration = require('./registration');
 const readline = require('readline');
+const { checkIfRegistered } = require('./registration');
 
 // Helper: Prompt user input from shell
 function promptInput(question) {
