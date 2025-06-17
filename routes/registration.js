@@ -23,7 +23,7 @@ function askQuestion(query) {
 
 async function promptRegistration() {
   console.log('\n🛡️ Registration Process');
-  console.log('CJS Pay requires that you link your account to a Stellar public key.');
+  console.log(' BuyCJS requires that you link your account to a Stellar public key.');
   console.log('This allows us to verify your identity and handle transactions securely.\n');
 
   const userId = await askQuestion('Please enter your user ID: ');
