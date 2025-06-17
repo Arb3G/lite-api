@@ -1,3 +1,5 @@
+// buycjs.js
+
 const registration = require('./registration');
 const readline = require('readline');
 
@@ -30,14 +32,14 @@ async function promptPurchaseAmount() {
 }
 
 async function confirmPurchase(amount) {
-  const confirm = await promptInput(`Proceed with purchase of ${amount} CJS? (yes/no): `);
+  const confirm = await promptInput(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
   return confirm.toLowerCase() === 'yes';
 }
 
 async function promptBuyCJS(args) {
   if (!args || args.length === 0) {
-    console.log('\n💳 Welcome to CJS Pay!');
-    console.log('CJS Pay allows you to make secure purchases linked to your Stellar public key.');
+    console.log('\n💳 Welcome to BuyCJS!');
+    console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
     console.log('To begin, we need to verify that you are registered.\n');
 
     // This handles: check, confirm, or register user
