@@ -79,3 +79,8 @@ async function promptBuyCJS(args) {
 }
 
 module.exports = { promptBuyCJS };
+
+if (require.main === module) {
+  promptBuyCJS(process.argv.slice(2));
+}
+
