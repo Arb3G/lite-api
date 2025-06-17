@@ -22,13 +22,18 @@ function askQuestion(query) {
  */
 async function checkIfRegistered(userId) {
   try {
-    const response = await axios.post(`${API_BASE}/register`, { userId });
+    const response = await axios.post(`${API_BASE}/register`, {
+      userId,
+      step: 'confirm',
+      answer: 'yes'
+    });
     return response.data.registered === true;
   } catch (error) {
     console.error('❌ Error checking registration:', error.message);
     return false;
   }
 }
+
 
 /**
  * Runs the full interactive registration flow if the user is not already registered
