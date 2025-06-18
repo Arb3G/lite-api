@@ -1,4 +1,6 @@
 // buycjs.js
+// buycjs.js
+
 const registration = require('./registration');
 const readline = require('readline');
 const { checkIfRegistered, promptRegistration } = require('./registration');
@@ -16,14 +18,18 @@ function askQuestion(query) {
   }));
 }
 
+async function promptInput(prompt) {
+  return await askQuestion(prompt);
+}
+
 async function buyCJS({ user, amount }) {
   // Placeholder: replace with real Stellar purchase logic
-  console.log(`Simulating purchase of ${amount} CJS for user ${user.userId} (Stellar address: ${user.publicKey || 'unknown'})`);
+  console.log(`Simulating purchase of ${amount} CJS for user ${user.userId}`);
   return { success: true, txId: 'TX1234567890' };
 }
 
 async function promptPurchaseAmount() {
-  const input = await askQuestion('Enter amount of CJS to purchase: ');
+  const input = await promptInput('Enter amount of CJS to purchase: ');
   const amount = parseFloat(input);
   if (isNaN(amount) || amount <= 0) {
     console.log('❗ Invalid amount. Please try again.');
@@ -33,26 +39,24 @@ async function promptPurchaseAmount() {
 }
 
 async function confirmPurchase(amount) {
-  const confirm = await askQuestion(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
+  const confirm = await promptInput(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
   return confirm.toLowerCase() === 'yes';
 }
 
 async function promptBuyCJS(args) {
   if (!args || args.length === 0) {
     console.log('\n💳 Welcome to BuyCJS!');
-    console.log('BuyCJS lets you purchase CJS tokens and send them directly to your linked Stellar wallet.');
-    console.log('To get started, please tell us if you are already registered.\n');
-
-    const answer = await askQuestion('Are you registered? (yes or no): ');
+    console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
+    
+    const answer = await askQuestion('❓ Are you registered? (yes or no): ');
     const response = answer.trim().toLowerCase();
 
     if (response !== 'yes' && response !== 'no') {
       console.log('❌ Please answer "yes" or "no".');
-      return await promptBuyCJS();
+      return;
     }
 
     const userId = await askQuestion('Please enter your user ID: ');
-
     let registeredUser;
 
     if (response === 'yes') {
@@ -62,12 +66,11 @@ async function promptBuyCJS(args) {
         return;
       }
       console.log(`\n✅ Welcome back, ${userId}!`);
-      // You might want to fetch the user's linked publicKey here from your backend for purchase
-      registeredUser = { userId }; 
+      registeredUser = { userId };
     } else {
       console.log('\n🛡️ Registration Process');
-      console.log('You will be asked to link your account to a Stellar public key (your CJS address).');
-      console.log('This is necessary to verify your identity and securely receive CJS tokens.\n');
+      console.log('CJS Pay requires that you link your account to a Stellar public key.');
+      console.log('This allows us to verify your identity and handle transactions securely.\n');
 
       registeredUser = await promptRegistration(userId);
 
@@ -101,7 +104,7 @@ async function promptBuyCJS(args) {
 
 module.exports = { promptBuyCJS };
 
-// CLI standalone support
+// 🔁 Allow standalone CLI usage
 if (require.main === module) {
   promptBuyCJS(process.argv.slice(2));
 }
