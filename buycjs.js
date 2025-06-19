@@ -1,9 +1,8 @@
 // buycjs.js
-// buycjs.js
 
 const registration = require('./registration');
 const readline = require('readline');
-const { checkIfRegistered, promptRegistration } = require('./registration');
+const { checkIfRegistered, promptRegistration } = registration;
 
 // Helper: Prompt user input from shell
 function askQuestion(query) {
@@ -69,9 +68,8 @@ async function promptBuyCJS(args) {
       registeredUser = { userId };
     } else {
       console.log('\n🛡️ Registration Process');
-      This process links your user ID to a Stellar public key and verifies your identity.",
       console.log('CJSBuy requires that you link your account to your CJS public key.');
-      console.log('This process links your user ID to a Stellar formatted public key and verifies your identity and verifies your identity, in order to handle transactions securely.\n');
+      console.log('This process links your user ID to a Stellar-formatted public key and verifies your identity, in order to handle transactions securely.\n');
 
       registeredUser = await promptRegistration(userId);
 
