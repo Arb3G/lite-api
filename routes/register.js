@@ -11,13 +11,13 @@ router.post('/', async (req, res) => {
   }
 
   // Initial prompt
-  if (!step) {
-    return res.status(200).json({
-      message: "Welcome to CJS Pay!",
-      explanation: "To use CJS Pay, you must first register. This process links your user ID to a Stellar public key and verifies your identity.",
-      prompt: "Are you registered? (yes or no)"
-    });
-  }
+  //if (!step) {
+  //  return res.status(200).json({
+   //   message: "Welcome to CJS Pay!",
+    //  explanation: "To use CJS Pay, you must first register. This process links your user ID to a Stellar public key and verifies your identity.",
+    //  prompt: "Are you registered? (yes or no)"
+ //   });
+ // }
 
   // Step: Confirm registration
   if (step === 'confirm') {
