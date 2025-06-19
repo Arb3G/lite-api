@@ -38,9 +38,9 @@ async function checkIfRegistered(userId) {
  */
 
 async function promptRegistration(userId) {
-  console.log('\n🛡️ Registration Process');
-  console.log('CJS Pay requires that you link your account to a Stellar public key.');
-  console.log('This allows us to verify your identity and handle transactions securely.\n');
+//  console.log('\n🛡️ Registration Process');
+//  console.log('CJS Pay requires that you link your account to a Stellar public key.');
+//  console.log('This allows us to verify your identity and handle transactions securely.\n');
 
   if (!userId) {
     userId = await askQuestion('Please enter your user ID: ');
