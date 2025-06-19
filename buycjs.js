@@ -48,7 +48,7 @@ async function promptBuyCJS(args) {
     console.log('\n💳 Welcome to BuyCJS!');
     console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
     
-    const answer = await askQuestion('❓ Are you registered? (yes or no): ');
+    const answer = await askQuestion('❓ Have you registered? (yes or no): ');
     const response = answer.trim().toLowerCase();
 
     if (response !== 'yes' && response !== 'no') {
@@ -56,7 +56,7 @@ async function promptBuyCJS(args) {
       return;
     }
 
-    const userId = await askQuestion('Please enter your user ID: ');
+    const userId = await askQuestion('Please enter your preferred user ID: ');
     let registeredUser;
 
     if (response === 'yes') {
@@ -69,7 +69,7 @@ async function promptBuyCJS(args) {
       registeredUser = { userId };
     } else {
       console.log('\n🛡️ Registration Process');
-      console.log('CJS Pay requires that you link your account to a Stellar public key.');
+      console.log('CJS Pay requires that you link your account to your CJS public key.');
       console.log('This allows us to verify your identity and handle transactions securely.\n');
 
       registeredUser = await promptRegistration(userId);
