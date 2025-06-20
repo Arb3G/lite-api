@@ -5,6 +5,12 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
 
+// Check for Stripe secret key early
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('❌ Missing Stripe Secret Key. Please set STRIPE_SECRET_KEY in your environment.');
+  process.exit(1);
+}
+
 // Helper: Prompt user input from shell
 function askQuestion(query) {
   const rl = readline.createInterface({
@@ -71,6 +77,12 @@ async function waitForCheckoutCompletion(sessionId, maxTries = 3, intervalMs = 1
   throw new Error('⏱ Payment not completed in time. Please start the process again.');
 }
 
+// Validate user input for CJS amount
+function isValidAmount(input) {
+  // Regex: positive number with up to 2 decimal places, e.g. 10, 0.25, 100.00
+  return /^\d+(\.\d{1,2})?$/.test(input) && parseFloat(input) > 0;
+}
+
 // Main CLI function
 async function promptBuyCJS(args) {
   if (!args || args.length === 0) {
@@ -113,13 +125,16 @@ async function promptBuyCJS(args) {
 
     console.log('\n👍 Let\'s proceed with your purchase.\n');
 
-    const input = await askQuestion('Enter amount of CJS to purchase: ');
-    const amount = parseFloat(input);
+    // Prompt for amount with validation loop
+    let input;
+    do {
+      input = await askQuestion('Enter amount of CJS to purchase: ');
+      if (!isValidAmount(input)) {
+        console.log('❗ Invalid amount format. Please enter a positive number (e.g., 10, 0.25).');
+      }
+    } while (!isValidAmount(input));
 
-    if (isNaN(amount) || amount <= 0) {
-      console.log('❗ Invalid amount. Please try again.');
-      return;
-    }
+    const amount = parseFloat(input);
 
     const confirmed = await askQuestion(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
     if (confirmed.toLowerCase() !== 'yes') {
