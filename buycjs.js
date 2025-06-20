@@ -1,7 +1,8 @@
 // buycjs.js
 
-const registration = require('./registration');
 const readline = require('readline');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
 
 // Helper: Prompt user input from shell
@@ -17,36 +18,65 @@ function askQuestion(query) {
   }));
 }
 
-async function promptInput(prompt) {
-  return await askQuestion(prompt);
+// Converts token amount to cents (e.g., 1 CJS = $0.01)
+function calculateAmountInCents(cjsAmount) {
+  const pricePerCJS = 1; // 1 cent per CJS token
+  return Math.round(cjsAmount * pricePerCJS);
 }
 
-async function buyCJS({ user, amount }) {
-  // Placeholder: replace with real Stellar purchase logic
-  console.log(`Simulating purchase of ${amount} CJS for user ${user.userId}`);
-  return { success: true, txId: 'TX1234567890' };
+// Create Stripe Checkout Session
+async function createStripeCheckoutSession(userId, amount) {
+  return await stripe.checkout.sessions.create({
+    payment_method_types: ['card', 'cashapp'],
+    mode: 'payment',
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `${amount} CJS Token${amount > 1 ? 's' : ''}`,
+          },
+          unit_amount: calculateAmountInCents(amount),
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      user_id: userId,
+      cjs_amount: amount.toString(),
+    },
+    success_url: 'https://yourapp.com/success',
+    cancel_url: 'https://yourapp.com/cancel',
+  });
 }
 
-async function promptPurchaseAmount() {
-  const input = await promptInput('Enter amount of CJS to purchase: ');
-  const amount = parseFloat(input);
-  if (isNaN(amount) || amount <= 0) {
-    console.log('❗ Invalid amount. Please try again.');
-    return await promptPurchaseAmount();
+// Poll for Stripe Checkout payment confirmation
+async function waitForCheckoutCompletion(sessionId, maxTries = 3, intervalMs = 10000) {
+  for (let attempt = 1; attempt <= maxTries; attempt++) {
+    console.log(`\n🔍 Checking payment status... (Attempt ${attempt}/${maxTries})`);
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === 'paid') {
+      console.log(`✅ Payment successful!`);
+      return session;
+    }
+
+    if (attempt < maxTries) {
+      console.log(`⏳ Payment not completed yet. Waiting ${intervalMs / 1000} seconds...`);
+      await new Promise(res => setTimeout(res, intervalMs));
+    }
   }
-  return amount;
+
+  throw new Error('⏱ Payment not completed in time. Please start the process again.');
 }
 
-async function confirmPurchase(amount) {
-  const confirm = await promptInput(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
-  return confirm.toLowerCase() === 'yes';
-}
-
+// Main CLI function
 async function promptBuyCJS(args) {
   if (!args || args.length === 0) {
     console.log('\n💳 Welcome to BuyCJS!');
     console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
-    
+
     const answer = await askQuestion('❓ Have you registered? (yes or no): ');
     const response = answer.trim().toLowerCase();
 
@@ -83,20 +113,34 @@ async function promptBuyCJS(args) {
 
     console.log('\n👍 Let\'s proceed with your purchase.\n');
 
-    const amount = await promptPurchaseAmount();
-    const confirmed = await confirmPurchase(amount);
+    const input = await askQuestion('Enter amount of CJS to purchase: ');
+    const amount = parseFloat(input);
 
-    if (!confirmed) {
+    if (isNaN(amount) || amount <= 0) {
+      console.log('❗ Invalid amount. Please try again.');
+      return;
+    }
+
+    const confirmed = await askQuestion(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
+    if (confirmed.toLowerCase() !== 'yes') {
       console.log('❌ Purchase cancelled.');
       process.exit(0);
     }
 
-    const result = await buyCJS({ user: registeredUser, amount });
+    try {
+      console.log('\n⚙️ Creating Stripe Checkout session...');
+      const session = await createStripeCheckoutSession(registeredUser.userId, amount);
 
-    if (result.success) {
-      console.log(`✅ Purchase successful! Transaction ID: ${result.txId}`);
-    } else {
-      console.error(`🚫 Purchase failed: ${result.error}`);
+      console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
+
+      const result = await waitForCheckoutCompletion(session.id);
+
+      console.log(`\n🚀 Payment confirmed. Ready to send ${result.metadata.cjs_amount} CJS to user "${result.metadata.user_id}".`);
+      // TODO: Trigger Stellar transfer here (optional)
+
+    } catch (err) {
+      console.error(`\n${err.message}`);
+      process.exit(1);
     }
   }
 }
