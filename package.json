@@ -11,7 +11,8 @@
     "axios": "^1.10.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "stripe": "^18.2.1"  
+    "qrcode-terminal": "^0.12.0",
+    "stripe": "^18.2.1" 
   },
   "bin": {
     "cjs": "./index.js"
