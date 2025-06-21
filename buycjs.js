@@ -1,7 +1,8 @@
 // buycjs.js
 
 const readline = require('readline');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+//const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')('sk_test_YOUR_SECRET_KEY'); // ✅ add your real test key
 const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
 
