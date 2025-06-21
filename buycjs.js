@@ -54,10 +54,12 @@ async function createStripeCheckoutSession(userId, amount) {
       user_id: userId,
       cjs_amount: amount.toString(),
     },
+    customer_creation: 'if_required', // ✅ Prevents email requirement
     success_url: 'https://yourapp.com/success',
     cancel_url: 'https://yourapp.com/cancel',
   });
 }
+
 
 // Poll for Stripe Checkout payment confirmation
 async function waitForCheckoutCompletion(sessionId, maxTries = 10, intervalMs = 30000) {
