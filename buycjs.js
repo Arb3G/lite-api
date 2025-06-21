@@ -31,7 +31,7 @@ function calculateAmountInCents(cjsAmount) {
   return Math.round(cjsAmount * pricePerCJS);
 }
 
-// Create Stripe Checkout Session
+// Create Stripe Checkout Sesion
 async function createStripeCheckoutSession(userId, amount) {
   return await stripe.checkout.sessions.create({
     payment_method_types: ['card', 'cashapp'],
