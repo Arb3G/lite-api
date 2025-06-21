@@ -1,6 +1,7 @@
 // buycjs.js
 
 const readline = require('readline');
+const qrcode = require('qrcode-terminal');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 //const stripe = require('stripe')('sk_test_YOUR_SECRET_KEY'); //  ✅ add your real test key
 const registration = require('./registration');
@@ -58,7 +59,7 @@ async function createStripeCheckoutSession(userId, amount) {
 }
 
 // Poll for Stripe Checkout payment confirmation
-async function waitForCheckoutCompletion(sessionId, maxTries = 3, intervalMs = 10000) {
+async function waitForCheckoutCompletion(sessionId, maxTries = 10, intervalMs = 30000) {
   for (let attempt = 1; attempt <= maxTries; attempt++) {
     console.log(`\n🔍 Checking payment status... (Attempt ${attempt}/${maxTries})`);
 
@@ -149,6 +150,9 @@ async function promptBuyCJS(args) {
       const session = await createStripeCheckoutSession(registeredUser.userId, amount);
 
       console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
+      //console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
+      // Print QR code in terminal
+      qrcode.generate(session.url, { small: true });
 
       const result = await waitForCheckoutCompletion(session.id);
 
