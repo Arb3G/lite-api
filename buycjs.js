@@ -88,6 +88,7 @@ function isValidAmount(input) {
 async function promptBuyCJS(args) {
   if (!args || args.length === 0) {
     console.log('\n💳 Welcome to BuyCJS!');
+    console. log('\n This is from the main directory');
     console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
 
     const answer = await askQuestion('❓ Have you registered? (yes or no): ');
