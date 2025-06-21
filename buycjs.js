@@ -149,8 +149,8 @@ async function promptBuyCJS(args) {
       console.log('\n⚙️ Creating Stripe Checkout session...');
       const session = await createStripeCheckoutSession(registeredUser.userId, amount);
 
-      console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
-      //console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
+     // console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
+      console.log(`\n🔗 Please complete your payment using this link or with the QR code:\n\n${session.url}\n\n`);
       // Print QR code in terminal
       qrcode.generate(session.url, { small: true });
 
