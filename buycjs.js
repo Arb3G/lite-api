@@ -153,7 +153,7 @@ async function promptBuyCJS(args) {
       const HYPERLINK = `\u001b]8;;${session.url}\u0007${session.url}\u001b]8;;\u0007`;
       console.log(`\n🔗 Please complete your payment using this link:\n\n${HYPERLINK}\n\n`);
 
-      qrcode.generate(session.url, { small: true });
+      //qrcode.generate(session.url, { small: true });
 
       const result = await waitForCheckoutCompletion(session.id);
 
