@@ -150,11 +150,11 @@ async function promptBuyCJS(args) {
       console.log('\n⚙️ Creating Stripe Checkout session...');
       const session = await createStripeCheckoutSession(registeredUser.userId, amount);
 
-     // console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
+      console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
       const HYPERLINK = `\u001b]8;;${session.url}\u0007${session.url}\u001b]8;;\u0007`;
-      console.log(`\n🔗 Please complete your payment using this link:\n\n${HYPERLINK}\n\n`);
-      await open(session.url);
-      //qrcode.generate(session.url, { small: true });
+      //console.log(`\n🔗 Please complete your payment using this link:\n\n${HYPERLINK}\n\n`);
+      //await open(session.url);
+      qrcode.generate(session.url, { small: true });
 
       const result = await waitForCheckoutCompletion(session.id);
 
