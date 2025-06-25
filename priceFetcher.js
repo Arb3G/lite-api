@@ -1,8 +1,4 @@
 // priceFetcher.js
-// priceFetcher.js
-const StellarSdk = require('@stellar/stellar-sdk');
-const fetch = require('node-fetch');
-
 const StellarSdk = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
 
@@ -13,7 +9,7 @@ const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
 
 const server = new Server(HORIZON_URL);
 
-// Fetch live XLM/USD from CoinGecko
+// Fetch live XLM/USD price from CoinGecko
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
   const res = await fetch(url);
@@ -24,6 +20,7 @@ async function getLiveXLMtoUSD() {
 
 // Dynamically compute pool ID for constant product pool
 function computePoolID(assetA, assetB, fee = 30) {
+  // Order assets lexicographically
   const [asset1, asset2] = Asset.compare(assetA, assetB) < 0 ? [assetA, assetB] : [assetB, assetA];
 
   const poolParams = new xdr.LiquidityPoolConstantProductParameters({
@@ -51,10 +48,10 @@ async function getCJSXLMPriceFromPool() {
   const reserveCJS = parseFloat(reserves.find(r => r.asset !== 'native').amount);
   const reserveXLM = parseFloat(reserves.find(r => r.asset === 'native').amount);
 
-  return reserveXLM / reserveCJS; // 1 CJS = ? XLM
+  return reserveXLM / reserveCJS; // 1 CJS in XLM
 }
 
-// Convert CJS to USD using Stellar + CoinGecko
+// Convert CJS to USD using Stellar liquidity pool and CoinGecko price
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
   const cjsToXLM = await getCJSXLMPriceFromPool();
@@ -66,3 +63,4 @@ module.exports = {
   getCJSXLMPriceFromPool,
   getUnitPriceUSD
 };
+
