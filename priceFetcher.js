@@ -1,5 +1,6 @@
 // priceFetcher.js
 
+
 const fetch = require('node-fetch');
 const { Asset, StrKey, xdr } = require('@stellar/stellar-sdk');
 
