@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
-const { Asset } = require('stellar-sdk');
+//const { Asset } = require('stellar-sdk');
+const { Asset, LiquidityPoolIdBuilder } = require('@stellar/stellar-sdk');
 
 const CJS_ISSUER = process.env.CJS_ISSUER;
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
@@ -15,8 +16,8 @@ async function getLiveXLMtoUSD() {
 async function getCJSXLMPriceFromPool() {
   const CJS = new Asset('CJS', CJS_ISSUER);
   const XLM = Asset.native();
-  const poolID = Asset.liquidityPoolId('constant_product', CJS, XLM, 0.003); // 0.3% fee
-
+ // const poolID = Asset.liquidityPoolId('constant_product', CJS, XLM, 0.003); // 0.3% fee
+  const poolID = LiquidityPoolIdBuilder.fromAssets(CJS, XLM, 'constant_product', { fee: 30 }).toString();
   const url = `${HORIZON_URL}/liquidity_pools/${poolID}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
