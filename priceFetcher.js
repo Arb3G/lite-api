@@ -1,29 +1,14 @@
 // priceFetcher.js
+const StellarSdk = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
-const crypto = require('crypto');
-const { Asset, StrKey, xdr } = require('@stellar/stellar-sdk');
 
-const CJS_ISSUER = process.env.CJS_ISSUER;
+const { Asset } = StellarSdk;
+
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
+const POOL_ID = process.env.POOL_ID;
+const CJS_ISSUER = process.env.CJS_ISSUER;
 
-function computePoolID(assetA, assetB, fee = 30) {
-  const [asset1, asset2] = Asset.compare(assetA, assetB) < 0 ? [assetA, assetB] : [assetB, assetA];
-
-  const liquidityPoolParams = new xdr.LiquidityPoolConstantProductParameters({
-    assetA: asset1.toXDRObject(),
-    assetB: asset2.toXDRObject(),
-    fee: fee,
-  });
-
-  const poolParams = new xdr.LiquidityPoolParameters('liquidityPoolConstantProduct', liquidityPoolParams);
-  const xdrBytes = poolParams.toXDR();
-
-  const hash = crypto.createHash('sha256').update(xdrBytes).digest();
-
-  const poolId = xdr.PoolId.fromXDR(hash);
-
-  return StrKey.encodeLiquidityPoolId(poolId);
-}
+const server = new StellarSdk.Server(HORIZON_URL);
 
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
@@ -34,18 +19,10 @@ async function getLiveXLMtoUSD() {
 }
 
 async function getCJSXLMPriceFromPool() {
+  if (!POOL_ID) throw new Error('❌ POOL_ID is not set in environment variables');
   if (!CJS_ISSUER) throw new Error('❌ CJS_ISSUER is not set in environment variables');
 
-  const CJS = new Asset('CJS', CJS_ISSUER);
-  const XLM = Asset.native();
-
-  const poolId = computePoolID(CJS, XLM);
-
-  const url = `${HORIZON_URL}/liquidity_pools/${poolId}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`❌ Failed to fetch liquidity pool data: ${res.statusText}`);
-
-  const pool = await res.json();
+  const pool = await server.liquidityPools().liquidityPoolId(POOL_ID).call();
 
   const reserves = pool.reserves;
   const reserveCJS = parseFloat(reserves.find(r => r.asset !== 'native').amount);
@@ -63,5 +40,5 @@ async function getUnitPriceUSD() {
 module.exports = {
   getLiveXLMtoUSD,
   getCJSXLMPriceFromPool,
-  getUnitPriceUSD,
+  getUnitPriceUSD
 };
