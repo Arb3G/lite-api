@@ -7,6 +7,12 @@ const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
 const { getUnitPriceUSD } = require('./priceFetcher'); // 🔁 Modularized price logic
 
+const { createClient } = require('@supabase/supabase-js'); // ⬅️ Add this
+const supabase = createClient(
+  process.env.PROJECT_URL,
+  process.env.SERVICE_ROLE_KEY
+); // ⬅️ And this
+
 const OVERHEAD_RATE = 0.3; // 30% buffer for Stripe + Treasury + LP
 
 // Check for Stripe secret key early
