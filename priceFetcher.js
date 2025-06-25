@@ -36,7 +36,7 @@ async function getCJSXLMPriceFromPool() {
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
   const cjsToXLM = await getCJSXLMPriceFromPool();
-  return parseFloat((xlmToUSD * cjsToXLM).toFixed(4));
+  return parseFloat((xlmToUSD * cjsToXLM).toFixed(7));
 }
 
 module.exports = {
