@@ -9,7 +9,7 @@ const { getUnitPriceUSD } = require('./priceFetcher'); // 🔁 Modularized price
 
 const { createClient } = require('@supabase/supabase-js'); // ⬅️ Add this
 const supabase = createClient(
-  process.env.PROJECT_URL,
+  process.env.SUPABASE_URL,
   process.env.SERVICE_ROLE_KEY
 ); // ⬅️ And this
 
