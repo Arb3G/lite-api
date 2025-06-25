@@ -5,6 +5,12 @@ const fetch = require('node-fetch'); // if you want to use node-fetch v2, else d
 const CJS_ISSUER = process.env.CJS_ISSUER;
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
 
+(async () => {
+  const StellarSdk = await import('@stellar/stellar-sdk');
+  console.log('StellarSdk keys:', Object.keys(StellarSdk));
+  console.log('StellarSdk.Server:', StellarSdk.Server);
+})();
+
 // Fetch live XLM/USD from CoinGecko
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
