@@ -1,9 +1,11 @@
 // priceFetcher.js
 // priceFetcher.js
+// priceFetcher
+const StellarSdk = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
 const { Asset } = require('@stellar/stellar-sdk');
 
-const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
+const HORIZON_URL = 'https://horizon.stellar.org';
 const POOL_ID = process.env.POOL_ID;
 const CJS_ISSUER = process.env.CJS_ISSUER;
 
