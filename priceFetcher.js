@@ -1,14 +1,12 @@
 // priceFetcher.js
-const StellarSdk = require('@stellar/stellar-sdk');
+const { Server, Asset } = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
-
-const { Asset } = StellarSdk;
 
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
 const POOL_ID = process.env.POOL_ID;
 const CJS_ISSUER = process.env.CJS_ISSUER;
 
-const server = new StellarSdk.Server(HORIZON_URL);
+const server = new Server(HORIZON_URL);
 
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
