@@ -6,14 +6,13 @@ const { Asset, StrKey, xdr } = require('@stellar/stellar-sdk');
 const CJS_ISSUER = process.env.CJS_ISSUER;
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
 
-// Compute Liquidity Pool ID for constant product pool
 function computePoolID(assetA, assetB, fee = 30) {
   const [asset1, asset2] = Asset.compare(assetA, assetB) < 0 ? [assetA, assetB] : [assetB, assetA];
 
   const liquidityPoolParams = new xdr.LiquidityPoolConstantProductParameters({
     assetA: asset1.toXDRObject(),
     assetB: asset2.toXDRObject(),
-    fee: xdr.Uint32.fromString(fee.toString()),
+    fee: fee, // or fee: Number(fee),
   });
 
   const poolParams = new xdr.LiquidityPoolParameters('liquidityPoolConstantProduct', liquidityPoolParams);
@@ -22,7 +21,6 @@ function computePoolID(assetA, assetB, fee = 30) {
   return StrKey.encodeLiquidityPoolId(poolId);
 }
 
-// Fetch live XLM/USD price from CoinGecko
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
   const res = await fetch(url);
@@ -31,7 +29,6 @@ async function getLiveXLMtoUSD() {
   return json.stellar.usd;
 }
 
-// Fetch CJS/XLM price from Stellar liquidity pool directly via HTTP
 async function getCJSXLMPriceFromPool() {
   if (!CJS_ISSUER) throw new Error('❌ CJS_ISSUER is not set in environment variables');
 
@@ -50,10 +47,9 @@ async function getCJSXLMPriceFromPool() {
   const reserveCJS = parseFloat(reserves.find(r => r.asset !== 'native').amount);
   const reserveXLM = parseFloat(reserves.find(r => r.asset === 'native').amount);
 
-  return reserveXLM / reserveCJS; // Price of 1 CJS in XLM
+  return reserveXLM / reserveCJS;
 }
 
-// Combine prices to get unit price in USD
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
   const cjsToXLM = await getCJSXLMPriceFromPool();
@@ -63,5 +59,5 @@ async function getUnitPriceUSD() {
 module.exports = {
   getLiveXLMtoUSD,
   getCJSXLMPriceFromPool,
-  getUnitPriceUSD
+  getUnitPriceUSD,
 };
