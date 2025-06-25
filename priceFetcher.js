@@ -1,15 +1,11 @@
 // priceFetcher.js
-const StellarSdk = require('@stellar/stellar-sdk');
-const fetch = require('node-fetch');
-
-const { Server, Asset, StrKey, xdr } = StellarSdk;
+// priceFetcher.js
+const fetch = require('node-fetch'); // if you want to use node-fetch v2, else dynamic import it too
 
 const CJS_ISSUER = process.env.CJS_ISSUER;
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
 
-const server = new Server(HORIZON_URL);
-
-// Fetch live XLM/USD price from CoinGecko
+// Fetch live XLM/USD from CoinGecko
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
   const res = await fetch(url);
@@ -18,19 +14,27 @@ async function getLiveXLMtoUSD() {
   return json.stellar.usd;
 }
 
-// Dynamically compute pool ID for constant product pool
-function computePoolID(assetA, assetB, fee = 30) {
-  // Order assets lexicographically
+// Dynamically import Stellar SDK
+async function getStellarSdk() {
+  return await import('@stellar/stellar-sdk');
+}
+
+// Compute liquidity pool ID for constant product pool
+async function computePoolID(assetA, assetB, fee = 30) {
+  const StellarSdk = await getStellarSdk();
+  const { Asset, StrKey, xdr } = StellarSdk;
+
   const [asset1, asset2] = Asset.compare(assetA, assetB) < 0 ? [assetA, assetB] : [assetB, assetA];
 
-  const poolParams = new xdr.LiquidityPoolConstantProductParameters({
+  const liquidityPoolParams = new xdr.LiquidityPoolConstantProductParameters({
     assetA: asset1.toXDRObject(),
     assetB: asset2.toXDRObject(),
     fee: xdr.Uint32.fromString(fee.toString())
   });
 
-  const wrappedParams = new xdr.LiquidityPoolParameters('liquidityPoolConstantProduct', poolParams);
-  const poolId = xdr.PoolId.fromXDR(xdr.Hash.hash(wrappedParams.toXDR()));
+  const poolParams = new xdr.LiquidityPoolParameters('liquidityPoolConstantProduct', liquidityPoolParams);
+  const poolId = xdr.PoolId.fromXDR(xdr.Hash.hash(poolParams.toXDR()));
+
   return StrKey.encodeLiquidityPoolId(poolId);
 }
 
@@ -38,20 +42,24 @@ function computePoolID(assetA, assetB, fee = 30) {
 async function getCJSXLMPriceFromPool() {
   if (!CJS_ISSUER) throw new Error('❌ CJS_ISSUER is not set in environment variables');
 
+  const StellarSdk = await getStellarSdk();
+  const { Asset } = StellarSdk;
+  const server = new (StellarSdk.Server)(HORIZON_URL);
+
   const CJS = new Asset('CJS', CJS_ISSUER);
   const XLM = Asset.native();
 
-  const poolId = computePoolID(CJS, XLM);
+  const poolId = await computePoolID(CJS, XLM);
   const pool = await server.liquidityPools().liquidityPoolId(poolId).call();
 
   const reserves = pool.reserves;
   const reserveCJS = parseFloat(reserves.find(r => r.asset !== 'native').amount);
   const reserveXLM = parseFloat(reserves.find(r => r.asset === 'native').amount);
 
-  return reserveXLM / reserveCJS; // 1 CJS in XLM
+  return reserveXLM / reserveCJS; // 1 CJS = ? XLM
 }
 
-// Convert CJS to USD using Stellar liquidity pool and CoinGecko price
+// Convert CJS to USD using Stellar + CoinGecko
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
   const cjsToXLM = await getCJSXLMPriceFromPool();
@@ -63,4 +71,3 @@ module.exports = {
   getCJSXLMPriceFromPool,
   getUnitPriceUSD
 };
-
