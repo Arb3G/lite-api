@@ -23,11 +23,18 @@ async function getLiveXLMtoUSD() {
 function computePoolID(assetA, assetB, fee = 30) {
   const [asset1, asset2] = Asset.compare(assetA, assetB) < 0 ? [assetA, assetB] : [assetB, assetA];
 
-  const liquidityPoolParameters = new xdr.LiquidityPoolConstantProductParameters({
+  const liquidityPoolParams = new xdr.LiquidityPoolConstantProductParameters({
     assetA: asset1.toXDRObject(),
     assetB: asset2.toXDRObject(),
-    fee: LiquidityPoolFeeV18.toXDR(fee),
+    fee: xdr.Uint32.fromString(fee.toString())
   });
+
+  const poolParams = new xdr.LiquidityPoolParameters('liquidityPoolConstantProduct', liquidityPoolParams);
+  const poolId = xdr.PoolId.fromXDR(xdr.Hash.hash(poolParams.toXDR()));
+
+  return StrKey.encodeLiquidityPoolId(poolId);
+}
+
 
   const liquidityPoolType = xdr.LiquidityPoolType.liquidityPoolConstantProduct();
 
