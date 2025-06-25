@@ -1,5 +1,5 @@
 // priceFetcher.js
-const { Server, Asset } = require('@stellar/stellar-sdk');
+// priceFetcher.js
 const fetch = require('node-fetch');
 const { Asset } = require('@stellar/stellar-sdk');
 
@@ -17,13 +17,17 @@ async function getLiveXLMtoUSD() {
 
 async function getCJSXLMPriceFromPool() {
   if (!POOL_ID) throw new Error('❌ POOL_ID not set');
+  if (!CJS_ISSUER) throw new Error('❌ CJS_ISSUER not set');
+
   const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to fetch pool');
+  if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
+
   const pool = await res.json();
-  const r = pool.reserves;
-  const reserveCJS = parseFloat(r.find(x => x.asset !== 'native').amount);
-  const reserveXLM = parseFloat(r.find(x => x.asset === 'native').amount);
+  const reserves = pool.reserves;
+  const reserveCJS = parseFloat(reserves.find(r => r.asset !== 'native').amount);
+  const reserveXLM = parseFloat(reserves.find(r => r.asset === 'native').amount);
+
   return reserveXLM / reserveCJS;
 }
 
