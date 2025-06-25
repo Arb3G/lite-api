@@ -1,7 +1,6 @@
 // priceFetcher.js
-
-
 const fetch = require('node-fetch');
+const crypto = require('crypto');
 const { Asset, StrKey, xdr } = require('@stellar/stellar-sdk');
 
 const CJS_ISSUER = process.env.CJS_ISSUER;
@@ -13,11 +12,15 @@ function computePoolID(assetA, assetB, fee = 30) {
   const liquidityPoolParams = new xdr.LiquidityPoolConstantProductParameters({
     assetA: asset1.toXDRObject(),
     assetB: asset2.toXDRObject(),
-    fee: fee, // or fee: Number(fee),
+    fee: fee,
   });
 
   const poolParams = new xdr.LiquidityPoolParameters('liquidityPoolConstantProduct', liquidityPoolParams);
-  const poolId = xdr.PoolId.fromXDR(xdr.Hash.hash(poolParams.toXDR()));
+  const xdrBytes = poolParams.toXDR();
+
+  const hash = crypto.createHash('sha256').update(xdrBytes).digest();
+
+  const poolId = xdr.PoolId.fromXDR(hash);
 
   return StrKey.encodeLiquidityPoolId(poolId);
 }
