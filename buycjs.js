@@ -15,6 +15,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   process.exit(1);
 }
 
+
 // Helper: Prompt user input from shell
 function askQuestion(query) {
   const rl = readline.createInterface({
