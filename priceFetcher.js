@@ -3,8 +3,10 @@
 const StellarSdk = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
 
-const { Asset, StrKey, xdr } = StellarSdk;
-const { Server } = require('@stellar/stellar-sdk/server'); // ✅ FIXED
+const StellarSdk = require('@stellar/stellar-sdk');
+const fetch = require('node-fetch');
+
+const { Server, Asset, StrKey, xdr } = StellarSdk;
 
 const CJS_ISSUER = process.env.CJS_ISSUER;
 const HORIZON_URL = 'https://horizon-futurenet.stellar.org';
