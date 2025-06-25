@@ -1,5 +1,4 @@
 // priceFetcher.js
-
 const StellarSdk = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
 
@@ -43,4 +42,3 @@ module.exports = {
   getCJSXLMPriceFromPool,
   getUnitPriceUSD
 };
-
