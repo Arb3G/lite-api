@@ -10,7 +10,7 @@ const { getUnitPriceUSD } = require('./priceFetcher'); // 🔁 Modularized price
 const { createClient } = require('@supabase/supabase-js'); // ⬅️ Add this
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 ); // ⬅️ And this
 
 const OVERHEAD_RATE = 0.3; // 30% buffer for Stripe + Treasury + LP
