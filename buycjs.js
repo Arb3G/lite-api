@@ -52,7 +52,7 @@ async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
           product_data: {
             name: `${cjsAmount} CJS Token${cjsAmount > 1 ? 's' : ''}`,
           },
-          unit_amount: Math.round(grossUSD * 100), // in cents
+          unit_amount: Math.round(grossUSD * 1000), // in cents
         },
         quantity: 1,
       },
@@ -60,7 +60,7 @@ async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
     metadata: {
       user_id: userId,
       cjs_amount: cjsAmount.toString(),
-      unit_price: grossUSD.toFixed(4),
+      unit_price: grossUSD.toFixed(7),
     },
     customer_creation: 'if_required',
     success_url: 'https://yourapp.com/success',
@@ -156,8 +156,8 @@ async function promptBuyCJS(args) {
     // 🔁 Apply overhead buffer (Stripe + LP + Treasury)
     const grossTotal = baseCost / (1 - OVERHEAD_RATE);
 
-    console.log(`\n🧮 Market Rate: $${unitPrice.toFixed(4)} per CJS`);
-    console.log(`📦 Base Cost: $${baseCost.toFixed(2)} | Total w/ Overhead: $${grossTotal.toFixed(2)}\n`);
+    console.log(`\n🧮 Market Rate: $${unitPrice.toFixed(7)} per CJS`);
+    console.log(`📦 Base Cost: $${baseCost.toFixed(7)} | Total w/ Overhead: $${grossTotal.toFixed(7)}\n`);
 
     const confirmed = await askQuestion(`Proceed with payment of $${grossTotal.toFixed(2)} for ${cjsAmount} CJS tokens? (yes/no): `);
     if (confirmed.toLowerCase() !== 'yes') {
