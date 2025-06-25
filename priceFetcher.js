@@ -44,7 +44,10 @@ async function getCJSXLMPriceFromPool() {
 
   const StellarSdk = await getStellarSdk();
   const { Asset } = StellarSdk;
-  const server = new (StellarSdk.Server)(HORIZON_URL);
+  // Access Server via StellarSdk.Server.Server
+  const ServerClass = StellarSdk.Server.Server || StellarSdk.Server; // fallback if nested
+
+  const server = new ServerClass(HORIZON_URL);
 
   const CJS = new Asset('CJS', CJS_ISSUER);
   const XLM = Asset.native();
