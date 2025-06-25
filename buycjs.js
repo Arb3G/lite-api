@@ -1,12 +1,13 @@
 // buycjs.js
-
 const open = require('open');
 const readline = require('readline');
 const qrcode = require('qrcode-terminal');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-//const stripe = require('stripe')('sk_test_YOUR_SECRET_KEY'); //  ✅ add your real test key
 const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
+const { getUnitPriceUSD } = require('./priceFetcher'); // 🔁 Modularized price logic
+
+const OVERHEAD_RATE = 0.3; // 30% buffer for Stripe + Treasury + LP
 
 // Check for Stripe secret key early
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -27,14 +28,13 @@ function askQuestion(query) {
   }));
 }
 
-// Converts token amount to cents (e.g., 1 CJS = $0.01)
-function calculateAmountInCents(cjsAmount) {
-  const pricePerCJS = 1; // 1 cent per CJS token
-  return Math.round(cjsAmount * pricePerCJS);
+// Converts token amount to cents using dynamic price
+function calculateAmountInCents(cjsAmount, unitPriceUSD) {
+  return Math.round(cjsAmount * unitPriceUSD * 100);
 }
 
-// Create Stripe Checkout Sesion
-async function createStripeCheckoutSession(userId, amount) {
+// Create Stripe Checkout Session
+async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
   return await stripe.checkout.sessions.create({
     payment_method_types: ['card', 'cashapp'],
     mode: 'payment',
@@ -43,23 +43,23 @@ async function createStripeCheckoutSession(userId, amount) {
         price_data: {
           currency: 'usd',
           product_data: {
-            name: `${amount} CJS Token${amount > 1 ? 's' : ''}`,
+            name: `${cjsAmount} CJS Token${cjsAmount > 1 ? 's' : ''}`,
           },
-          unit_amount: calculateAmountInCents(amount),
+          unit_amount: Math.round(grossUSD * 100), // in cents
         },
         quantity: 1,
       },
     ],
     metadata: {
       user_id: userId,
-      cjs_amount: amount.toString(),
+      cjs_amount: cjsAmount.toString(),
+      unit_price: grossUSD.toFixed(4),
     },
-    customer_creation: 'if_required', // ✅ Prevents email requirement
+    customer_creation: 'if_required',
     success_url: 'https://yourapp.com/success',
     cancel_url: 'https://yourapp.com/cancel',
   });
 }
-
 
 // Poll for Stripe Checkout payment confirmation
 async function waitForCheckoutCompletion(sessionId, maxTries = 10, intervalMs = 30000) {
@@ -84,7 +84,6 @@ async function waitForCheckoutCompletion(sessionId, maxTries = 10, intervalMs = 
 
 // Validate user input for CJS amount
 function isValidAmount(input) {
-  // Regex: positive number with up to 2 decimal places, e.g. 10, 0.25, 100.00
   return /^\d+(\.\d{1,2})?$/.test(input) && parseFloat(input) > 0;
 }
 
@@ -92,7 +91,7 @@ function isValidAmount(input) {
 async function promptBuyCJS(args) {
   if (!args || args.length === 0) {
     console.log('\n💳 Welcome to BuyCJS!');
-    console. log('\n This is from the main directory');
+    console.log('\nThis is from the main directory');
     console.log('BuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
 
     const answer = await askQuestion('❓ Have you registered? (yes or no): ');
@@ -140,9 +139,20 @@ async function promptBuyCJS(args) {
       }
     } while (!isValidAmount(input));
 
-    const amount = parseFloat(input);
+    const cjsAmount = parseFloat(input);
 
-    const confirmed = await askQuestion(`Proceed with purchase of ${amount} CJS tokens to your registered wallet? (yes/no): `);
+    // 🔁 Fetch dynamic unit price
+    console.log('\n📈 Fetching live market prices...');
+    const unitPrice = await getUnitPriceUSD();
+    const baseCost = cjsAmount * unitPrice;
+
+    // 🔁 Apply overhead buffer (Stripe + LP + Treasury)
+    const grossTotal = baseCost / (1 - OVERHEAD_RATE);
+
+    console.log(`\n🧮 Market Rate: $${unitPrice.toFixed(4)} per CJS`);
+    console.log(`📦 Base Cost: $${baseCost.toFixed(2)} | Total w/ Overhead: $${grossTotal.toFixed(2)}\n`);
+
+    const confirmed = await askQuestion(`Proceed with payment of $${grossTotal.toFixed(2)} for ${cjsAmount} CJS tokens? (yes/no): `);
     if (confirmed.toLowerCase() !== 'yes') {
       console.log('❌ Purchase cancelled.');
       process.exit(0);
@@ -150,18 +160,15 @@ async function promptBuyCJS(args) {
 
     try {
       console.log('\n⚙️ Creating Stripe Checkout session...');
-      const session = await createStripeCheckoutSession(registeredUser.userId, amount);
+      const session = await createStripeCheckoutSession(registeredUser.userId, cjsAmount, grossTotal);
 
       console.log(`\n🔗 Please complete your payment using this link:\n${session.url}\n`);
       const HYPERLINK = `\u001b]8;;${session.url}\u0007${session.url}\u001b]8;;\u0007`;
-      //console.log(`\n🔗 Please complete your payment using this link:\n\n${HYPERLINK}\n\n`);
-      //await open(session.url);
       qrcode.generate(session.url, { small: true });
 
       const result = await waitForCheckoutCompletion(session.id);
 
       console.log(`\n🚀 Payment confirmed. Ready to send ${result.metadata.cjs_amount} CJS to user "${result.metadata.user_id}".`);
-      // TODO: Trigger Stellar transfer here (optional)
 
     } catch (err) {
       console.error(`\n${err.message}`);
@@ -172,7 +179,6 @@ async function promptBuyCJS(args) {
 
 module.exports = { promptBuyCJS };
 
-// 🔁 Allow standalone CLI usage
 if (require.main === module) {
   promptBuyCJS(process.argv.slice(2));
 }
