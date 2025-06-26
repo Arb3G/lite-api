@@ -29,15 +29,23 @@ async function getCJSXLMPriceFromPool() {
   const reserves = pool.reserves;
   const reserveCJS = parseFloat(reserves.find(r => r.asset !== 'native').amount);
   const reserveXLM = parseFloat(reserves.find(r => r.asset === 'native').amount);
+  console.log(`💧 Reserves — CJS: ${reserveCJS}, XLM: ${reserveXLM}`);
 
-  return reserveXLM / reserveCJS;
 }
 
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
   const cjsToXLM = await getCJSXLMPriceFromPool();
-  return parseFloat((xlmToUSD * cjsToXLM).toFixed(7));
+
+  console.log(`🔍 XLM to USD: $${xlmToUSD}`);
+  console.log(`🔁 CJS to XLM: ${cjsToXLM}`);
+
+  const result = parseFloat((xlmToUSD * cjsToXLM).toFixed(8));
+  console.log(`✅ Final Price per CJS in USD: $${result}`);
+
+  return result;
 }
+
 
 module.exports = {
   getLiveXLMtoUSD,
