@@ -60,7 +60,7 @@ async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
     metadata: {
       user_id: userId,
       cjs_amount: cjsAmount.toString(),
-      unit_price: grossUSD.toFixed(7),
+      unit_price: grossUSD.toFixed(10),
     },
     customer_creation: 'if_required',
     success_url: 'https://yourapp.com/success',
