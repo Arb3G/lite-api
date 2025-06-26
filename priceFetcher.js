@@ -1,13 +1,8 @@
 // priceFetcher.js
-
-const { Asset, Server } = require('@stellar/stellar-sdk');
 const fetch = require('node-fetch');
 
-const HORIZON_URL = 'https://horizon.stellar.org'; // Use mainnet Horizon
-const server = new Server(HORIZON_URL);
-
-const POOL_ID = process.env.POOL_ID; // Set your liquidity pool ID in .env
-const CJS_ISSUER = process.env.CJS_ISSUER; // Not used here but keep for reference if needed
+const HORIZON_URL = 'https://horizon.stellar.org'; // mainnet Horizon
+const POOL_ID = process.env.POOL_ID;
 
 async function getLiveXLMtoUSD() {
   const url = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd';
@@ -24,7 +19,10 @@ async function getLiveXLMtoUSD() {
 async function getCJSXLMPriceFromPool() {
   if (!POOL_ID) throw new Error('❌ POOL_ID is not set in environment variables');
 
-  const pool = await server.liquidityPools().liquidityPoolId(POOL_ID).call();
+  const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
+  const pool = await res.json();
 
   if (!pool || !pool.reserves || pool.reserves.length !== 2) {
     throw new Error('❌ Invalid or empty liquidity pool data');
@@ -63,14 +61,6 @@ async function getUnitPriceUSD() {
 
   return result;
 }
-
-module.exports = {
-  getLiveXLMtoUSD,
-  getCJSXLMPriceFromPool,
-  getUnitPriceUSD
-};
-
-
 
 module.exports = {
   getLiveXLMtoUSD,
