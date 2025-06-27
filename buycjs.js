@@ -68,12 +68,34 @@ async function waitForCheckoutCompletion(sessionId, maxTries = 10, intervalMs = 
 
 // CLI entry
 async function promptBuyCJS(args) {
+  console.clear();
+
   console.log('\n💳 Welcome to BuyCJS!');
+  console.log('\nBuyCJS is a tool for purchasing CJS tokens and sending them directly to your CJS wallet on the Stellar network.');
+  console.log('────────────────────────────────────────────────────────');
+  console.log('💡 Here’s what you’re doing:');
+  console.log('1️⃣  Confirm your registration status and user ID.');
+  console.log('2️⃣  Purchase CJS tokens at the live market price.');
+  console.log('3️⃣  Pay securely via Stripe.');
+  console.log('4️⃣  Receive your tokens automatically after payment confirmation.\n');
+  console.log('📌 Notes:');
+  console.log(`- Stripe fees: $${STRIPE_FLAT_FEE.toFixed(2)} + ${(STRIPE_PERCENT_FEE * 100).toFixed(0)}% per transaction.`);
+  console.log(`- Funds are split: ${(SPLIT_PERCENT * 100).toFixed(0)}% to Treasury/LP, ${((1 - SPLIT_PERCENT) * 100).toFixed(0)}% to liquidity pool.`);
+  console.log(`- Minimum purchase: $${MIN_PURCHASE_USD.toFixed(2)}.`);
+  console.log('────────────────────────────────────────────────────────');
+
   const answer = await askQuestion('❓ Have you registered? (yes or no): ');
+  const response = answer.trim().toLowerCase();
+
+  if (response !== 'yes' && response !== 'no') {
+    console.log('❌ Please answer "yes" or "no".');
+    return;
+  }
+
   const userId = await askQuestion('Please enter your preferred user ID: ');
 
   let registeredUser;
-  if (answer === 'yes') {
+  if (response === 'yes') {
     const isRegistered = await checkIfRegistered(userId);
     if (!isRegistered) {
       console.log(`🛑 User "${userId}" not found. Please register first.`);
@@ -82,7 +104,12 @@ async function promptBuyCJS(args) {
     registeredUser = { userId };
     console.log(`✅ Welcome back, ${userId}!`);
   } else {
+    console.log('\n🛡️ Registration Process');
+    console.log('CJSBuy requires linking your user ID to a Stellar public key.');
+    console.log('This links your identity securely for token transactions.\n');
+
     registeredUser = await promptRegistration(userId);
+
     if (!registeredUser || !registeredUser.userId) {
       console.log('❌ Registration failed or cancelled.');
       return;
@@ -94,6 +121,9 @@ async function promptBuyCJS(args) {
   let usdInput;
   do {
     usdInput = await askQuestion(`\n💰 Enter USD amount to spend (minimum $${MIN_PURCHASE_USD.toFixed(2)}): `);
+    if (isNaN(usdInput) || parseFloat(usdInput) < MIN_PURCHASE_USD) {
+      console.log(`❗ Please enter a number greater than or equal to $${MIN_PURCHASE_USD.toFixed(2)}.`);
+    }
   } while (isNaN(usdInput) || parseFloat(usdInput) < MIN_PURCHASE_USD);
 
   const grossUSD = parseFloat(usdInput);
@@ -143,3 +173,4 @@ module.exports = { promptBuyCJS };
 if (require.main === module) {
   promptBuyCJS(process.argv.slice(2));
 }
+
