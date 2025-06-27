@@ -44,6 +44,39 @@ async function getCJSXLMPriceFromPool() {
   return amountXLM / amountCJS; // 1 CJS = ? XLM
 }
 
+// New function to fetch pool reserves for liquidity checks
+async function getPoolData() {
+  if (!POOL_ID) throw new Error('❌ POOL_ID is not set in environment variables');
+
+  const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
+  const pool = await res.json();
+
+  if (!pool || !pool.reserves || pool.reserves.length !== 2) {
+    throw new Error('❌ Invalid or empty liquidity pool data');
+  }
+
+  const reserveCJS = pool.reserves.find(r => r.asset !== 'native');
+  const reserveXLM = pool.reserves.find(r => r.asset === 'native');
+
+  if (!reserveCJS || !reserveXLM) {
+    throw new Error('❌ Could not find both XLM and CJS reserves');
+  }
+
+  const amountCJS = parseFloat(reserveCJS.amount);
+  const amountXLM = parseFloat(reserveXLM.amount);
+
+  if (isNaN(amountCJS) || isNaN(amountXLM)) {
+    throw new Error('❌ Invalid reserve amounts');
+  }
+
+  return {
+    cjsReserve: amountCJS,
+    xlmReserve: amountXLM,
+  };
+}
+
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
   const cjsToXLM = await getCJSXLMPriceFromPool();
@@ -61,25 +94,9 @@ async function getUnitPriceUSD() {
   return result;
 }
 
-// NEW function to fetch full liquidity pool data (for reserves check)
-async function getLiquidityPoolData() {
-  if (!POOL_ID) throw new Error('❌ POOL_ID is not set in environment variables');
-
-  const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
-  const pool = await res.json();
-
-  if (!pool || !pool.reserves || pool.reserves.length !== 2) {
-    throw new Error('❌ Invalid or empty liquidity pool data');
-  }
-
-  return pool; // full pool data including reserves
-}
-
 module.exports = {
   getLiveXLMtoUSD,
   getCJSXLMPriceFromPool,
   getUnitPriceUSD,
-  getLiquidityPoolData,  // export new function
+  getPoolData,  // new export
 };
