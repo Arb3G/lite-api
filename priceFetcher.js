@@ -1,4 +1,3 @@
-// priceFetcher.js
 const fetch = require('node-fetch');
 
 const HORIZON_URL = 'https://horizon.stellar.org'; // mainnet Horizon
@@ -12,7 +11,6 @@ async function getLiveXLMtoUSD() {
   const usd = json?.stellar?.usd;
 
   if (!usd || isNaN(usd)) throw new Error("❌ Invalid XLM/USD price");
-
   return parseFloat(usd);
 }
 
@@ -22,6 +20,7 @@ async function getCJSXLMPriceFromPool() {
   const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
+
   const pool = await res.json();
 
   if (!pool || !pool.reserves || pool.reserves.length !== 2) {
@@ -42,24 +41,35 @@ async function getCJSXLMPriceFromPool() {
     throw new Error('❌ Invalid reserve amounts');
   }
 
-  return amountXLM / amountCJS; // 1 CJS = ? XLM
+  const priceCJS_XLM = amountXLM / amountCJS;
+
+  return {
+    priceCJS_XLM,
+    amountXLM,
+    amountCJS
+  };
 }
 
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
-  const cjsToXLM = await getCJSXLMPriceFromPool();
+  const { priceCJS_XLM, amountXLM, amountCJS } = await getCJSXLMPriceFromPool();
 
   console.log(`🔍 XLM to USD: $${xlmToUSD}`);
-  console.log(`🔁 CJS to XLM: ${cjsToXLM}`);
+  console.log(`🔁 CJS to XLM: ${priceCJS_XLM}`);
 
-  if (isNaN(xlmToUSD) || isNaN(cjsToXLM)) {
-    throw new Error('❌ Invalid pricing data: one or both values are not numbers');
+  const priceCJS_USD = parseFloat((xlmToUSD * priceCJS_XLM).toFixed(8));
+  console.log(`✅ Final Price per CJS in USD: $${priceCJS_USD}`);
+
+  // TVL calculation
+  const tvlUSD = (amountXLM * xlmToUSD) + (amountCJS * priceCJS_USD);
+  console.log(`Current Liquidity Pool Stats: 💰 TVL: ~$${tvlUSD.toFixed(2)} (1 XLM + ${amountCJS} CJS)`);
+
+  // Warn if shallow
+  if (amountXLM < 5 || amountCJS < 1000) {
+    console.warn(`⚠️ Warning: Your LP is very shallow (Depth: ${amountXLM} XLM / ${amountCJS} CJS). Expect high slippage.`);
   }
 
-  const result = parseFloat((xlmToUSD * cjsToXLM).toFixed(8));
-  console.log(`✅ Final Price per CJS in USD: $${result}`);
-
-  return result;
+  return priceCJS_USD;
 }
 
 module.exports = {
