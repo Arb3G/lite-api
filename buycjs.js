@@ -5,9 +5,7 @@ const qrcode = require('qrcode-terminal');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
-// const { getUnitPriceUSD } = require('./priceFetcher');
-const { getUnitPriceUSD, getLiquidityPoolData } = require('./priceFetcher');
-
+const { getUnitPriceUSD, getPoolData } = require('./priceFetcher');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
@@ -19,7 +17,6 @@ const STRIPE_FLAT_FEE = 0.30;
 const STRIPE_PERCENT_FEE = 0.03;
 const SPLIT_PERCENT = 0.40; // 40% to Treasury/LP
 const MIN_PURCHASE_USD = 2.00;
-const SAFETY_FACTOR = 0.9; // Use 90% of available liquidity as max purchasable
 
 // Prompt user input
 function askQuestion(query) {
@@ -38,14 +35,14 @@ async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
     line_items: [{
       price_data: {
         currency: 'usd',
-        product_data: { name: `${cjsAmount} CJS Token${cjsAmount !== 1 ? 's' : ''}` },
+        product_data: { name: `${cjsAmount.toFixed(2)} CJS Token${cjsAmount !== 1 ? 's' : ''}` },
         unit_amount: Math.round(grossUSD * 100), // cents
       },
       quantity: 1,
     }],
     metadata: {
       user_id: userId,
-      cjs_amount: cjsAmount.toString(),
+      cjs_amount: cjsAmount.toFixed(2),
       unit_price: (grossUSD / cjsAmount).toFixed(10),
     },
     success_url: 'https://yourapp.com/success',
@@ -69,7 +66,10 @@ async function waitForCheckoutCompletion(sessionId, maxTries = 10, intervalMs = 
   throw new Error('⏱ Payment timeout. Try again.');
 }
 
-// CLI entry
+function isValidResponse(ans) {
+  return ans.toLowerCase() === 'yes' || ans.toLowerCase() === 'no';
+}
+
 async function promptBuyCJS(args) {
   console.clear();
 
@@ -87,14 +87,18 @@ async function promptBuyCJS(args) {
   console.log(`- Minimum purchase: $${MIN_PURCHASE_USD.toFixed(2)}.`);
   console.log('────────────────────────────────────────────────────────');
 
-  // Registration logic unchanged
-  const answer = await askQuestion('❓ Have you registered? (yes or no): ');
+  let answer;
+  do {
+    answer = await askQuestion('❓ Have you registered? (yes or no): ');
+    if (!isValidResponse(answer)) {
+      console.log('❌ Please answer "yes" or "no".');
+    }
+  } while (!isValidResponse(answer));
+
   const response = answer.trim().toLowerCase();
-  if (response !== 'yes' && response !== 'no') {
-    console.log('❌ Please answer "yes" or "no".');
-    return;
-  }
+
   const userId = await askQuestion('Please enter your preferred user ID: ');
+
   let registeredUser;
   if (response === 'yes') {
     const isRegistered = await checkIfRegistered(userId);
@@ -108,7 +112,9 @@ async function promptBuyCJS(args) {
     console.log('\n🛡️ Registration Process');
     console.log('CJSBuy requires linking your user ID to a Stellar public key.');
     console.log('This links your identity securely for token transactions.\n');
+
     registeredUser = await promptRegistration(userId);
+
     if (!registeredUser || !registeredUser.userId) {
       console.log('❌ Registration failed or cancelled.');
       return;
@@ -137,37 +143,28 @@ async function promptBuyCJS(args) {
   const unitPriceUSD = await getUnitPriceUSD(); // 1 CJS = ? USD
   let cjsAmount = usableFunds / unitPriceUSD;
 
-  // Fetch liquidity pool data
+  // Fetch liquidity pool data and apply cap if needed
   console.log('\n🔍 Fetching liquidity pool reserves...');
   let poolData;
   try {
-    poolData = await getPoolData(); // you should have this function in priceFetcher returning reserves { cjsReserve, xlmReserve }
-  } catch (err) {
-    console.warn('⚠️ Could not fetch liquidity pool data, proceeding without liquidity check.');
+    poolData = await getPoolData();
+  } catch (error) {
+    console.warn('⚠️ Could not fetch liquidity pool data, skipping liquidity check.');
   }
 
   if (poolData) {
     const { cjsReserve } = poolData;
+    const safeLimit = cjsReserve * 0.9; // 90% cap for safety
 
-    // Safety margin to avoid buying entire pool
-    const maxBuyable = cjsReserve * 0.9;
+    console.log(`\n📊 Liquidity Pool Info:`);
+    console.log(`• Available CJS in pool: ${cjsReserve.toFixed(2)}`);
+    console.log(`• Max allowed purchase: ${safeLimit.toFixed(2)} CJS`);
 
-    console.log(`\n📊 Liquidity Pool Status:`);
-    console.log(`• Available CJS tokens: ${cjsReserve.toFixed(2)}`);
-    console.log(`• Max purchasable (90% cap): ${maxBuyable.toFixed(2)}`);
-
-    if (cjsAmount > maxBuyable) {
-      console.log(`\n⚠️ Purchase amount exceeds available liquidity.`);
-      console.log(`⚠️ Limiting purchase to ${maxBuyable.toFixed(2)} CJS tokens.`);
-
-      cjsAmount = maxBuyable;
-
-      // Recalculate grossUSD from capped tokens + fees/split
-      const grossWithoutFees = cjsAmount * unitPriceUSD;
-      const grossWithFees = (grossWithoutFees + treasurySplit + stripeFee) / (1 - STRIPE_PERCENT_FEE);
-      // For simplicity, we keep grossUSD as is or you can calculate exact new grossUSD here
-
-      // Optional: You can print a message to user about adjusted payment amount
+    if (cjsAmount > safeLimit) {
+      console.log(`\n⚠️ Your purchase exceeds available liquidity.`);
+      console.log(`⚠️ Limiting your purchase to ${safeLimit.toFixed(2)} CJS tokens.`);
+      cjsAmount = safeLimit;
+      // Optionally: recalc grossUSD here based on capped cjsAmount and unitPriceUSD if desired
     }
   }
 
@@ -201,10 +198,8 @@ async function promptBuyCJS(args) {
   }
 }
 
-
 module.exports = { promptBuyCJS };
 
 if (require.main === module) {
   promptBuyCJS(process.argv.slice(2));
 }
-
