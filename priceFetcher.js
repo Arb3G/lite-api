@@ -11,6 +11,7 @@ async function getLiveXLMtoUSD() {
   const usd = json?.stellar?.usd;
 
   if (!usd || isNaN(usd)) throw new Error("❌ Invalid XLM/USD price");
+
   return parseFloat(usd);
 }
 
@@ -20,7 +21,6 @@ async function getCJSXLMPriceFromPool() {
   const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
-
   const pool = await res.json();
 
   if (!pool || !pool.reserves || pool.reserves.length !== 2) {
@@ -41,39 +41,45 @@ async function getCJSXLMPriceFromPool() {
     throw new Error('❌ Invalid reserve amounts');
   }
 
-  const priceCJS_XLM = amountXLM / amountCJS;
-
-  return {
-    priceCJS_XLM,
-    amountXLM,
-    amountCJS
-  };
+  return amountXLM / amountCJS; // 1 CJS = ? XLM
 }
 
 async function getUnitPriceUSD() {
   const xlmToUSD = await getLiveXLMtoUSD();
-  const { priceCJS_XLM, amountXLM, amountCJS } = await getCJSXLMPriceFromPool();
+  const cjsToXLM = await getCJSXLMPriceFromPool();
 
   console.log(`🔍 XLM to USD: $${xlmToUSD}`);
-  console.log(`🔁 CJS to XLM: ${priceCJS_XLM}`);
+  console.log(`🔁 CJS to XLM: ${cjsToXLM}`);
 
-  const priceCJS_USD = parseFloat((xlmToUSD * priceCJS_XLM).toFixed(8));
-  console.log(`✅ Final Price per CJS in USD: $${priceCJS_USD}`);
-
-  // TVL calculation
-  const tvlUSD = (amountXLM * xlmToUSD) + (amountCJS * priceCJS_USD);
-  console.log(`Current Liquidity Pool Stats: 💰 TVL: ~$${tvlUSD.toFixed(2)} (1 XLM + ${amountCJS} CJS)`);
-
-  // Warn if shallow
-  if (amountXLM < 5 || amountCJS < 1000) {
-    console.warn(`⚠️ Warning: Your LP is very shallow (Depth: ${amountXLM} XLM / ${amountCJS} CJS). Expect high slippage.`);
+  if (isNaN(xlmToUSD) || isNaN(cjsToXLM)) {
+    throw new Error('❌ Invalid pricing data: one or both values are not numbers');
   }
 
-  return priceCJS_USD;
+  const result = parseFloat((xlmToUSD * cjsToXLM).toFixed(8));
+  console.log(`✅ Final Price per CJS in USD: $${result}`);
+
+  return result;
+}
+
+// NEW function to fetch full liquidity pool data (for reserves check)
+async function getLiquidityPoolData() {
+  if (!POOL_ID) throw new Error('❌ POOL_ID is not set in environment variables');
+
+  const url = `${HORIZON_URL}/liquidity_pools/${POOL_ID}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("❌ Failed to fetch liquidity pool data");
+  const pool = await res.json();
+
+  if (!pool || !pool.reserves || pool.reserves.length !== 2) {
+    throw new Error('❌ Invalid or empty liquidity pool data');
+  }
+
+  return pool; // full pool data including reserves
 }
 
 module.exports = {
   getLiveXLMtoUSD,
   getCJSXLMPriceFromPool,
-  getUnitPriceUSD
+  getUnitPriceUSD,
+  getLiquidityPoolData,  // export new function
 };
