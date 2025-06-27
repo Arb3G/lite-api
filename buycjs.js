@@ -5,7 +5,9 @@ const qrcode = require('qrcode-terminal');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const registration = require('./registration');
 const { checkIfRegistered, promptRegistration } = registration;
-const { getUnitPriceUSD } = require('./priceFetcher');
+// const { getUnitPriceUSD } = require('./priceFetcher');
+const { getUnitPriceUSD, getLiquidityPoolData } = require('./priceFetcher');
+
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
@@ -17,6 +19,7 @@ const STRIPE_FLAT_FEE = 0.30;
 const STRIPE_PERCENT_FEE = 0.03;
 const SPLIT_PERCENT = 0.40; // 40% to Treasury/LP
 const MIN_PURCHASE_USD = 2.00;
+const SAFETY_FACTOR = 0.9; // Use 90% of available liquidity as max purchasable
 
 // Prompt user input
 function askQuestion(query) {
@@ -126,17 +129,34 @@ async function promptBuyCJS(args) {
     }
   } while (isNaN(usdInput) || parseFloat(usdInput) < MIN_PURCHASE_USD);
 
-  const grossUSD = parseFloat(usdInput);
+  let grossUSD = parseFloat(usdInput);
 
   // 🧮 Fee calculations
   const stripeFee = STRIPE_FLAT_FEE + grossUSD * STRIPE_PERCENT_FEE;
   const remainingAfterStripe = grossUSD - stripeFee;
   const treasurySplit = remainingAfterStripe * SPLIT_PERCENT;
-  const usableFunds = remainingAfterStripe - treasurySplit;
+  let usableFunds = remainingAfterStripe - treasurySplit;
 
   console.log('\n📈 Fetching live market prices...');
   const unitPriceUSD = await getUnitPriceUSD(); // 1 CJS = ? USD
-  const cjsAmount = usableFunds / unitPriceUSD;
+  let cjsAmount = usableFunds / unitPriceUSD;
+
+  // Fetch LP data and apply liquidity cap
+  try {
+    const poolData = await getLiquidityPoolData();
+    const availableCJS = parseFloat(poolData.reserves.find(r => r.asset !== 'native').amount);
+    const maxPurchase = availableCJS * SAFETY_FACTOR;
+
+    if (cjsAmount > maxPurchase) {
+      console.log(`⚠️ Purchase amount exceeds available liquidity in pool.`);
+      console.log(`⚠️ Max purchasable tokens: ${maxPurchase.toFixed(2)} CJS`);
+      cjsAmount = maxPurchase;
+      usableFunds = cjsAmount * unitPriceUSD;
+      grossUSD = usableFunds + treasurySplit + stripeFee;
+    }
+  } catch (err) {
+    console.warn(`⚠️ Warning: Could not fetch liquidity pool data. Proceeding without liquidity cap. (${err.message})`);
+  }
 
   // Breakdown
   console.log(`\n🧾 Breakdown:`);
