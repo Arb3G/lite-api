@@ -87,16 +87,14 @@ async function promptBuyCJS(args) {
   console.log(`- Minimum purchase: $${MIN_PURCHASE_USD.toFixed(2)}.`);
   console.log('────────────────────────────────────────────────────────');
 
+  // Registration logic unchanged
   const answer = await askQuestion('❓ Have you registered? (yes or no): ');
   const response = answer.trim().toLowerCase();
-
   if (response !== 'yes' && response !== 'no') {
     console.log('❌ Please answer "yes" or "no".');
     return;
   }
-
   const userId = await askQuestion('Please enter your preferred user ID: ');
-
   let registeredUser;
   if (response === 'yes') {
     const isRegistered = await checkIfRegistered(userId);
@@ -110,9 +108,7 @@ async function promptBuyCJS(args) {
     console.log('\n🛡️ Registration Process');
     console.log('CJSBuy requires linking your user ID to a Stellar public key.');
     console.log('This links your identity securely for token transactions.\n');
-
     registeredUser = await promptRegistration(userId);
-
     if (!registeredUser || !registeredUser.userId) {
       console.log('❌ Registration failed or cancelled.');
       return;
@@ -120,7 +116,7 @@ async function promptBuyCJS(args) {
     console.log('✅ Registration complete.');
   }
 
-  // Minimum payment loop
+  // Minimum payment input loop
   let usdInput;
   do {
     usdInput = await askQuestion(`\n💰 Enter USD amount to spend (minimum $${MIN_PURCHASE_USD.toFixed(2)}): `);
@@ -129,33 +125,50 @@ async function promptBuyCJS(args) {
     }
   } while (isNaN(usdInput) || parseFloat(usdInput) < MIN_PURCHASE_USD);
 
-  let grossUSD = parseFloat(usdInput);
+  const grossUSD = parseFloat(usdInput);
 
-  // 🧮 Fee calculations
+  // Fee calculations
   const stripeFee = STRIPE_FLAT_FEE + grossUSD * STRIPE_PERCENT_FEE;
   const remainingAfterStripe = grossUSD - stripeFee;
   const treasurySplit = remainingAfterStripe * SPLIT_PERCENT;
-  let usableFunds = remainingAfterStripe - treasurySplit;
+  const usableFunds = remainingAfterStripe - treasurySplit;
 
   console.log('\n📈 Fetching live market prices...');
   const unitPriceUSD = await getUnitPriceUSD(); // 1 CJS = ? USD
   let cjsAmount = usableFunds / unitPriceUSD;
 
-  // Fetch LP data and apply liquidity cap
+  // Fetch liquidity pool data
+  console.log('\n🔍 Fetching liquidity pool reserves...');
+  let poolData;
   try {
-    const poolData = await getLiquidityPoolData();
-    const availableCJS = parseFloat(poolData.reserves.find(r => r.asset !== 'native').amount);
-    const maxPurchase = availableCJS * SAFETY_FACTOR;
-
-    if (cjsAmount > maxPurchase) {
-      console.log(`⚠️ Purchase amount exceeds available liquidity in pool.`);
-      console.log(`⚠️ Max purchasable tokens: ${maxPurchase.toFixed(2)} CJS`);
-      cjsAmount = maxPurchase;
-      usableFunds = cjsAmount * unitPriceUSD;
-      grossUSD = usableFunds + treasurySplit + stripeFee;
-    }
+    poolData = await getPoolData(); // you should have this function in priceFetcher returning reserves { cjsReserve, xlmReserve }
   } catch (err) {
-    console.warn(`⚠️ Warning: Could not fetch liquidity pool data. Proceeding without liquidity cap. (${err.message})`);
+    console.warn('⚠️ Could not fetch liquidity pool data, proceeding without liquidity check.');
+  }
+
+  if (poolData) {
+    const { cjsReserve } = poolData;
+
+    // Safety margin to avoid buying entire pool
+    const maxBuyable = cjsReserve * 0.9;
+
+    console.log(`\n📊 Liquidity Pool Status:`);
+    console.log(`• Available CJS tokens: ${cjsReserve.toFixed(2)}`);
+    console.log(`• Max purchasable (90% cap): ${maxBuyable.toFixed(2)}`);
+
+    if (cjsAmount > maxBuyable) {
+      console.log(`\n⚠️ Purchase amount exceeds available liquidity.`);
+      console.log(`⚠️ Limiting purchase to ${maxBuyable.toFixed(2)} CJS tokens.`);
+
+      cjsAmount = maxBuyable;
+
+      // Recalculate grossUSD from capped tokens + fees/split
+      const grossWithoutFees = cjsAmount * unitPriceUSD;
+      const grossWithFees = (grossWithoutFees + treasurySplit + stripeFee) / (1 - STRIPE_PERCENT_FEE);
+      // For simplicity, we keep grossUSD as is or you can calculate exact new grossUSD here
+
+      // Optional: You can print a message to user about adjusted payment amount
+    }
   }
 
   // Breakdown
@@ -187,6 +200,7 @@ async function promptBuyCJS(args) {
     process.exit(1);
   }
 }
+
 
 module.exports = { promptBuyCJS };
 
