@@ -6,35 +6,32 @@ const { getUser, addUser } = require('../services/db');
 router.post('/', async (req, res) => {
   const { userId, step, answer, publicKey } = req.body;
 
+  console.log("📥 /register hit with:", req.body);
+
   if (!userId) {
     return res.status(400).json({ error: "userId is required." });
   }
 
-  // Initial prompt
-  //if (!step) {
-  //  return res.status(200).json({
-   //   message: "Welcome to CJS Pay!",
-    //  explanation: "To use CJS Pay, you must first register. This process links your user ID to a Stellar public key and verifies your identity.",
-    //  prompt: "Are you registered? (yes or no)"
- //   });
- // }
-
   // Step: Confirm registration
   if (step === 'confirm') {
-  const user = await getUser(userId);
-  if (user) {
-    return res.status(200).json({
-      registered: true,
-      message: "Great! You're ready to make a purchase. Submit your userId and amount to /buycjs."
-    });
-  } else {
-    return res.status(200).json({
-      registered: false,
-      message: "User not found. Please register."
-    });
+    try {
+      const user = await getUser(userId);
+      if (user) {
+        return res.status(200).json({
+          registered: true,
+          message: "Great! You're ready to make a purchase. Submit your userId and amount to /buycjs."
+        });
+      } else {
+        return res.status(200).json({
+          registered: false,
+          message: "User not found. Please register."
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error checking registration:", error);
+      return res.status(500).json({ error: "Failed to check registration." });
+    }
   }
-}
-
 
   // Step: Register user
   if (step === 'register') {
@@ -42,16 +39,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: "publicKey is required." });
     }
 
+    console.log("🔧 Attempting to register user:", { userId, publicKey });
+
     try {
       await addUser(userId, publicKey);
-      console.log('✅ Registered new user:', { userId, publicKey });
+      console.log("✅ Successfully registered:", { userId });
 
       return res.status(200).json({
         message: "Registration complete.",
         user: { userId, publicKey }
       });
     } catch (error) {
-      console.error('❌ Registration error:', error);
+      console.error("❌ Registration failed:", error);
       return res.status(500).json({ error: "Failed to register user." });
     }
   }
