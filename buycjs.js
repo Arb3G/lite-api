@@ -15,10 +15,9 @@ const supabase = createClient(
 
 const STRIPE_FLAT_FEE = 0.30;
 const STRIPE_PERCENT_FEE = 0.03;
-const SPLIT_PERCENT = 0.40; // 40% to Treasury/LP
+const SPLIT_PERCENT = 0.40;
 const MIN_PURCHASE_USD = 2.00;
 
-// Prompt user input
 function askQuestion(query) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise(resolve => rl.question(query, ans => {
@@ -27,7 +26,6 @@ function askQuestion(query) {
   }));
 }
 
-// Stripe Checkout
 async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
   return await stripe.checkout.sessions.create({
     payment_method_types: ['card', 'cashapp'],
@@ -36,7 +34,7 @@ async function createStripeCheckoutSession(userId, cjsAmount, grossUSD) {
       price_data: {
         currency: 'usd',
         product_data: { name: `${cjsAmount.toFixed(2)} CJS Token${cjsAmount !== 1 ? 's' : ''}` },
-        unit_amount: Math.round(grossUSD * 100), // cents
+        unit_amount: Math.round(grossUSD * 100),
       },
       quantity: 1,
     }],
@@ -83,7 +81,7 @@ async function promptBuyCJS(args) {
   console.log('4️⃣  Receive your tokens automatically after payment confirmation.\n');
   console.log('📌 Notes:');
   console.log(`- Stripe fees: $${STRIPE_FLAT_FEE.toFixed(2)} + ${(STRIPE_PERCENT_FEE * 100).toFixed(0)}% per transaction.`);
-  console.log(`- Funds are split: ${(SPLIT_PERCENT * 100).toFixed(0)}% to Treasury/LP, ${((1 - SPLIT_PERCENT) * 100).toFixed(0)}% to liquidity pool.`);
+  console.log(`- Funds are split: ${(SPLIT_PERCENT * 100).toFixed(0)}% to Treasury/LP, ${((1 - SPLIT_PERCENT) * 100).toFixed(0)}% to token swap.`);
   console.log(`- Minimum purchase: $${MIN_PURCHASE_USD.toFixed(2)}.`);
   console.log('────────────────────────────────────────────────────────');
 
@@ -95,12 +93,10 @@ async function promptBuyCJS(args) {
     }
   } while (!isValidResponse(answer));
 
-  const response = answer.trim().toLowerCase();
-
   const userId = await askQuestion('Please enter your preferred user ID: ');
 
   let registeredUser;
-  if (response === 'yes') {
+  if (answer.toLowerCase() === 'yes') {
     const isRegistered = await checkIfRegistered(userId);
     if (!isRegistered) {
       console.log(`🛑 User "${userId}" not found. Please register first.`);
@@ -110,8 +106,7 @@ async function promptBuyCJS(args) {
     console.log(`✅ Welcome back, ${userId}!`);
   } else {
     console.log('\n🛡️ Registration Process');
-    console.log('CJSBuy requires linking your user ID to a Stellar public key.');
-    console.log('This links your identity securely for token transactions.\n');
+    console.log('CJSBuy requires linking your user ID to a Stellar public key.\n');
 
     registeredUser = await promptRegistration(userId);
 
@@ -122,7 +117,6 @@ async function promptBuyCJS(args) {
     console.log('✅ Registration complete.');
   }
 
-  // Minimum payment input loop
   let usdInput;
   do {
     usdInput = await askQuestion(`\n💰 Enter USD amount to spend (minimum $${MIN_PURCHASE_USD.toFixed(2)}): `);
@@ -133,17 +127,15 @@ async function promptBuyCJS(args) {
 
   const grossUSD = parseFloat(usdInput);
 
-  // Fee calculations
   const stripeFee = STRIPE_FLAT_FEE + grossUSD * STRIPE_PERCENT_FEE;
   const remainingAfterStripe = grossUSD - stripeFee;
   const treasurySplit = remainingAfterStripe * SPLIT_PERCENT;
   const usableFunds = remainingAfterStripe - treasurySplit;
 
   console.log('\n📈 Fetching live market prices...');
-  const unitPriceUSD = await getUnitPriceUSD(); // 1 CJS = ? USD
+  const unitPriceUSD = await getUnitPriceUSD();
   let cjsAmount = usableFunds / unitPriceUSD;
 
-  // Fetch liquidity pool data and apply cap if needed
   console.log('\n🔍 Fetching liquidity pool reserves...');
   let poolData;
   try {
@@ -154,7 +146,7 @@ async function promptBuyCJS(args) {
 
   if (poolData) {
     const { cjsReserve } = poolData;
-    const safeLimit = cjsReserve * 0.9; // 90% cap for safety
+    const safeLimit = cjsReserve * 0.9;
 
     console.log(`\n📊 Liquidity Pool Info:`);
     console.log(`• Available CJS in pool: ${cjsReserve.toFixed(2)}`);
@@ -164,11 +156,9 @@ async function promptBuyCJS(args) {
       console.log(`\n⚠️ Your purchase exceeds available liquidity.`);
       console.log(`⚠️ Limiting your purchase to ${safeLimit.toFixed(2)} CJS tokens.`);
       cjsAmount = safeLimit;
-      // Optionally: recalc grossUSD here based on capped cjsAmount and unitPriceUSD if desired
     }
   }
 
-  // Breakdown
   console.log(`\n🧾 Breakdown:`);
   console.log(`• Stripe Fee (30¢ + 3%): $${stripeFee.toFixed(2)}`);
   console.log(`• Treasury/LP (40%): $${treasurySplit.toFixed(2)}`);
@@ -191,6 +181,20 @@ async function promptBuyCJS(args) {
 
     const result = await waitForCheckoutCompletion(session.id);
     console.log(`\n🚀 Payment complete. ${result.metadata.cjs_amount} CJS will be sent to ${result.metadata.user_id}.`);
+
+    // ✅ Log purchase to Supabase
+    const { error } = await supabase.from('purchase').insert({
+      user_id: result.metadata.user_id,
+      amount: parseFloat(result.amount_total / 100), // in USD
+      purchased_at: new Date().toISOString(),
+      status: 'complete',
+    });
+
+    if (error) {
+      console.error('❌ Failed to log purchase to Supabase:', error.message);
+    } else {
+      console.log('📦 Purchase logged successfully in Supabase.');
+    }
 
   } catch (err) {
     console.error(`❌ ${err.message}`);
