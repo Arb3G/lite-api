@@ -1,62 +1,41 @@
 // db.js with SupaBase
-const express = require('express');
-const router = express.Router();
-const { getUser, addUser } = require('../services/db');
+// services/db.js
+const { createClient } = require('@supabase/supabase-js');
 
-router.post('/', async (req, res) => {
-  const { userId, step, answer, publicKey } = req.body;
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
-  console.log("📥 /register hit with:", req.body);
+// Add a user to the Supabase table
+async function addUser(userId, publicKey) {
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{ user_id: userId, public_key: publicKey }]);
 
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required." });
+  if (error) {
+    console.error('❌ Error inserting user:', error.message);
+    throw error;
   }
 
-  // Step: Confirm registration
-  if (step === 'confirm') {
-    try {
-      const user = await getUser(userId);
-      if (user) {
-        return res.status(200).json({
-          registered: true,
-          message: "Great! You're ready to make a purchase. Submit your userId and amount to /buycjs."
-        });
-      } else {
-        return res.status(200).json({
-          registered: false,
-          message: "User not found. Please register."
-        });
-      }
-    } catch (error) {
-      console.error("❌ Error checking registration:", error);
-      return res.status(500).json({ error: "Failed to check registration." });
-    }
+  console.log('✅ User added:', data);
+  return data;
+}
+
+// Get a user by ID
+async function getUser(userId) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('❌ Error fetching user:', error.message);
+    throw error;
   }
 
-  // Step: Register user
-  if (step === 'register') {
-    if (!publicKey) {
-      return res.status(400).json({ error: "publicKey is required." });
-    }
+  return data;
+}
 
-    console.log("🔧 Attempting to register user:", { userId, publicKey });
-
-    try {
-      await addUser(userId, publicKey);
-      console.log("✅ Successfully registered:", { userId });
-
-      return res.status(200).json({
-        message: "Registration complete.",
-        user: { userId, publicKey }
-      });
-    } catch (error) {
-      console.error("❌ Registration failed:", error);
-      return res.status(500).json({ error: "Failed to register user." });
-    }
-  }
-
-  // Unknown step
-  return res.status(400).json({ error: "Invalid step." });
-});
-
-module.exports = router;
+module.exports = { addUser, getUser };
