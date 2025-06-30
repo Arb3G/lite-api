@@ -1,8 +1,7 @@
 // routes/register.js
 const { SlashCommandBuilder } = require('discord.js');
-const { getUser, addUser } = require('../services/db'); // your existing DB functions
+const { getUser, addUser } = require('../services/db');
 
-// Basic Stellar public key validator (starts with G and 56 chars total)
 function isValidStellarPublicKey(key) {
   return /^G[A-Z2-7]{55}$/.test(key);
 }
@@ -22,7 +21,6 @@ module.exports = {
     const publicKey = interaction.options.getString('publickey');
     const discordId = interaction.user.id;
 
-    // Validate Stellar public key format
     if (!isValidStellarPublicKey(publicKey)) {
       return interaction.reply({
         content: '❌ That does not look like a valid Stellar public key. Please check and try again.',
@@ -31,13 +29,11 @@ module.exports = {
     }
 
     try {
-      // Check if user already exists
       const existingUser = await getUser(discordId);
 
       if (existingUser) {
-        // Update their Stellar key if different
         if (existingUser.public_key !== publicKey) {
-          await addUser(discordId, publicKey); // Assuming addUser does upsert
+          await addUser(discordId, publicKey);
           return interaction.reply({
             content: '✅ Your Stellar public key was updated successfully!',
             ephemeral: true,
@@ -49,7 +45,6 @@ module.exports = {
           });
         }
       } else {
-        // New user: add to DB
         await addUser(discordId, publicKey);
         return interaction.reply({
           content: '✅ Successfully linked your Stellar wallet to your Discord account!',
